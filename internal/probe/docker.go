@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/maxonphong/herd/internal/protocol"
+	"github.com/aealen/moonshepherd/internal/protocol"
 )
 
 func init() { Register("docker", func() Probe { return &DockerProbe{} }) }

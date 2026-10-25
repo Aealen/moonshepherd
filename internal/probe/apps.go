@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/maxonphong/herd/internal/protocol"
+	"github.com/aealen/moonshepherd/internal/protocol"
 )
 
 // ---------- nginx ----------

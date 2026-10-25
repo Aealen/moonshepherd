@@ -1,4 +1,4 @@
-// Package agentd 是 Shepherd Agent 核心：连接管理、心跳、探测、指令执行（docs/01 §3）。
+// Package agentd 是 MoonShepherd Agent 核心：连接管理、心跳、探测、指令执行（docs/01 §3）。
 package agentd
 
 import (
@@ -19,10 +19,10 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/maxonphong/herd/internal/executor"
-	"github.com/maxonphong/herd/internal/probe"
-	"github.com/maxonphong/herd/internal/protocol"
-	"github.com/maxonphong/herd/version"
+	"github.com/aealen/moonshepherd/internal/executor"
+	"github.com/aealen/moonshepherd/internal/probe"
+	"github.com/aealen/moonshepherd/internal/protocol"
+	"github.com/aealen/moonshepherd/version"
 )
 
 // Options Agent 启动配置。
@@ -202,7 +202,7 @@ func (a *Agent) saveCreds(c *credentials) error {
 func (a *Agent) dial(ctx context.Context) (*websocket.Conn, error) {
 	url := strings.TrimSuffix(a.opt.Server, "/") + "/agent"
 	d := &websocket.Dialer{HandshakeTimeout: 15 * time.Second}
-	conn, _, err := d.DialContext(ctx, url, http.Header{"User-Agent": {"shepherd/" + version.Version}})
+	conn, _, err := d.DialContext(ctx, url, http.Header{"User-Agent": {"herd/" + version.Version}})
 	return conn, err
 }
 

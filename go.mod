@@ -1,4 +1,4 @@
-module github.com/maxonphong/herd
+module github.com/aealen/moonshepherd
 
 go 1.27.1
 

@@ -7,8 +7,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/websocket"
 
-	"github.com/maxonphong/herd/internal/store"
-	"github.com/maxonphong/herd/version"
+	"github.com/aealen/moonshepherd/internal/store"
+	"github.com/aealen/moonshepherd/version"
 )
 
 // handleListApps GET /apps：应用中心主查询（docs/06 §2.3）。

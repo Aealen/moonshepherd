@@ -8,7 +8,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/maxonphong/herd/internal/protocol"
+	"github.com/aealen/moonshepherd/internal/protocol"
 )
 
 // 跨平台伪命令：validate 总是失败 / reload 总是成功。

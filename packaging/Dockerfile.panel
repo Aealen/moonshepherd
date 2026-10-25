@@ -17,15 +17,15 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 COPY --from=web /src/web/dist /src/web/dist
-RUN CGO_ENABLED=0 go build -ldflags "-s -w -X github.com/maxonphong/herd/version.Version=${VERSION}" \
-    -o /out/herd ./cmd/herd
+RUN CGO_ENABLED=0 go build -ldflags "-s -w -X github.com/aealen/moonshepherd/version.Version=${VERSION}" \
+    -o /out/moon ./cmd/moon
 
 FROM alpine:3.20
 RUN adduser -D -H -u 1000 herd
 USER herd
 WORKDIR /app
 VOLUME /app/data
-COPY --from=build /out/herd /app/herd
+COPY --from=build /out/moon /app/moon
 EXPOSE 8080
-ENTRYPOINT ["/app/herd"]
+ENTRYPOINT ["/app/moon"]
 CMD ["server", "--data", "/app/data", "--addr", ":8080"]

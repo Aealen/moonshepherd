@@ -13,8 +13,8 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/maxonphong/herd/internal/protocol"
-	"github.com/maxonphong/herd/internal/store"
+	"github.com/aealen/moonshepherd/internal/protocol"
+	"github.com/aealen/moonshepherd/internal/store"
 )
 
 // gateway Agent WSS 接入网关（docs/04 §2/§3；路径 /agent）。

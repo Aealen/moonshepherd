@@ -8,8 +8,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/maxonphong/herd/internal/protocol"
-	"github.com/maxonphong/herd/internal/store"
+	"github.com/aealen/moonshepherd/internal/protocol"
+	"github.com/aealen/moonshepherd/internal/store"
 )
 
 // supportedAppTypes 已注册 validate/reload 的应用（docs/01 §6.2：未知应用不允许跳过校验下发）。

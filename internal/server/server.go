@@ -10,9 +10,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/maxonphong/herd/internal/credenc"
-	"github.com/maxonphong/herd/internal/store"
-	"github.com/maxonphong/herd/web"
+	"github.com/aealen/moonshepherd/internal/credenc"
+	"github.com/aealen/moonshepherd/internal/store"
+	"github.com/aealen/moonshepherd/web"
 )
 
 // Options 面板启动配置。

@@ -3,5 +3,5 @@ package version
 
 // Version 语义化版本；构建命令：
 //
-//	go build -ldflags "-X github.com/maxonphong/herd/version.Version=0.1.0"
+//	go build -ldflags "-X github.com/aealen/moonshepherd/version.Version=0.1.0"
 var Version = "0.1.0-dev"

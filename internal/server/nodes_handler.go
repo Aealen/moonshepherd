@@ -8,8 +8,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/maxonphong/herd/internal/protocol"
-	"github.com/maxonphong/herd/internal/store"
+	"github.com/aealen/moonshepherd/internal/protocol"
+	"github.com/aealen/moonshepherd/internal/store"
 )
 
 // handleListNodes GET /nodes（docs/06 §2.2）。

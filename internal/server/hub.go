@@ -3,7 +3,7 @@ package server
 import (
 	"sync"
 
-	"github.com/maxonphong/herd/internal/protocol"
+	"github.com/aealen/moonshepherd/internal/protocol"
 )
 
 // agentConn 单个已认证 Agent 连接。

@@ -1,4 +1,4 @@
-// Package protocol 定义牧云面板与 Shepherd Agent 之间的 WSS 消息协议。
+// Package protocol 定义牧云面板与 MoonShepherd Agent 之间的 WSS 消息协议。
 // 本包是双端唯一共享代码（docs/02 §2 结构原则），实现依据 docs/04-通信协议规范.md。
 package protocol
 

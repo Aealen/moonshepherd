@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/maxonphong/herd/internal/protocol"
+	"github.com/aealen/moonshepherd/internal/protocol"
 )
 
 // collectHeartbeat Linux 心跳采集：/proc + df（docs/04 §5.1）。

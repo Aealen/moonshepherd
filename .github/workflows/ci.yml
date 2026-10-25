@@ -1,5 +1,5 @@
-# 牧云 Herd CI：push 自动测试、构建双镜像推 GHCR（docs/03 §6.2 分发通道）
-# 镜像地址：ghcr.io/<owner>/herd-panel 与 ghcr.io/<owner>/shepherd
+# 牧云 MoonShepherd CI：push 自动测试、构建双镜像推 GHCR（docs/03 §6.2 分发通道）
+# 镜像地址：ghcr.io/<owner>/moonshepherd（面板）与 ghcr.io/<owner>/herd（Agent）
 # push main → latest + sha 标签；push v* tag → 语义化版本标签
 name: CI
 
@@ -52,9 +52,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: herd-panel
+          - name: moonshepherd
             dockerfile: packaging/Dockerfile.panel
-          - name: shepherd
+          - name: herd
             dockerfile: packaging/Dockerfile.agent
     steps:
       - uses: actions/checkout@v4

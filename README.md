@@ -1,8 +1,8 @@
-# 牧云 Herd
+# 牧云 MoonShepherd
 
 > 把散落在云端的服务器，当羊群来放牧。
 
-**牧云（Herd）** 是一个自建的跨服务器统一管理后台：一个 Web 面板遥控 + 感知一群性格迥异的 Linux 节点——温顺的标准云主机，或者 Unraid 这种只有 BusyBox、没有 systemd 的刺头。
+**牧云（MoonShepherd）** 是一个自建的跨服务器统一管理后台：一个 Web 面板遥控 + 感知一群性格迥异的 Linux 节点——温顺的标准云主机，或者 Unraid 这种只有 BusyBox、没有 systemd 的刺头。
 
 ## 核心能力
 
@@ -48,16 +48,16 @@ push 到 GitHub 后 CI 自动测试并构建双镜像（amd64/arm64）推 GHCR�
 # 面板（任意 Docker 机 / NAS）
 docker run -d --name herd --restart unless-stopped \
   -p 8080:8080 -v ./data:/app/data \
-  ghcr.io/aealen/herd-panel:latest
+  ghcr.io/aealen/moonshepherd:latest
 
 # Agent（Unraid 等；面板发放 Token 后）
-docker run -d --name shepherd --restart unless-stopped \
+docker run -d --name herd --restart unless-stopped \
   -e HERD_SERVER=wss://panel.example.com \
   -e HERD_TOKEN=rt_xxx \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /etc/nginx:/etc/nginx \
-  -v shepherd-data:/data \
-  ghcr.io/aealen/shepherd:latest
+  -v herd-data:/data \
+  ghcr.io/aealen/herd:latest
 ```
 
 首次启动日志打印随机 admin 密码（或 `-e HERD_ADMIN_PASSWORD=...` 指定）。公网部署必须 TLS（前置反代或挂载证书，见 [docs/05-安全设计](docs/05-安全设计.md)）。
@@ -73,15 +73,15 @@ docker run -d --name shepherd --restart unless-stopped \
 ```bash
 # 面板（开发模式，数据在 ./data；首次启动打印随机管理员密码）
 make dev            # = 前端 vite 热更(:5173) + 面板(:8080)
-# 或只起面板：go run ./cmd/herd server --dev --data ./data
+# 或只起面板：go run ./cmd/moon server --dev --data ./data
 
 # Agent（先用面板发放注册 Token，然后）
-HERD_SERVER=ws://127.0.0.1:8080 HERD_TOKEN=rt_xxx go run ./cmd/shepherd -v
+HERD_SERVER=ws://127.0.0.1:8080 HERD_TOKEN=rt_xxx go run ./cmd/herd -v
 
 # 构建与测试
 make test           # go test ./...
-make backend        # dist/herd + dist/shepherd（本机平台）
-make cross          # Linux amd64/arm64 + shepherd armv7
+make backend        # dist/moon + dist/herd（本机平台）
+make cross          # Linux amd64/arm64 + herd armv7
 ```
 
 公网部署：前置反代终结 TLS（推荐）或 `--tls-cert/--tls-key`；详见 [docs/05-安全设计](docs/05-安全设计.md)。
@@ -89,4 +89,4 @@ make cross          # Linux amd64/arm64 + shepherd armv7
 ## 状态
 
 M1 完成（协议 + WSS 网关 + 注册/认证/心跳 + 面板/Agent 骨架 + 前端七页），测试全绿。
-语言：中文 / 产品代号：Herd / 技术栈：Go + Vue 3
+语言：中文 / 产品代号：MoonShepherd / 技术栈：Go + Vue 3

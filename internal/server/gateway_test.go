@@ -9,9 +9,9 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/maxonphong/herd/internal/credenc"
-	"github.com/maxonphong/herd/internal/protocol"
-	"github.com/maxonphong/herd/internal/store"
+	"github.com/aealen/moonshepherd/internal/credenc"
+	"github.com/aealen/moonshepherd/internal/protocol"
+	"github.com/aealen/moonshepherd/internal/store"
 )
 
 // newTestServer 组装内存面板（临时 data 目录）。

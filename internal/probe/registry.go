@@ -5,7 +5,7 @@ package probe
 import (
 	"context"
 
-	"github.com/maxonphong/herd/internal/protocol"
+	"github.com/aealen/moonshepherd/internal/protocol"
 )
 
 // Probe 探测器统一接口（docs/01 §3.3）。

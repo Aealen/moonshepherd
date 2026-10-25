@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/maxonphong/herd/internal/probe"
-	"github.com/maxonphong/herd/internal/protocol"
+	"github.com/aealen/moonshepherd/internal/probe"
+	"github.com/aealen/moonshepherd/internal/protocol"
 )
 
 // E 执行器：无状态，可并发执行不同指令。

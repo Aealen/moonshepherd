@@ -2,7 +2,7 @@
 # 首次启动日志会打印随机 admin 密码（或用 HERD_ADMIN_PASSWORD 指定）。
 services:
   herd:
-    image: herd-panel:latest
+    image: moonshepherd:latest
     build:
       context: ..
       dockerfile: packaging/Dockerfile.panel
