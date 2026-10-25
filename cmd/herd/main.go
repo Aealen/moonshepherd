@@ -30,10 +30,13 @@ func main() {
 		case "version":
 			fmt.Println("herd", version.Version)
 			return
+		case "admin":
+			adminCmd(os.Args[2:])
+			return
 		case "server":
 			os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
 		default:
-			fmt.Fprintf(os.Stderr, "未知子命令 %q；可用：server / version\n", os.Args[1])
+			fmt.Fprintf(os.Stderr, "未知子命令 %q；可用：server / admin / version\n", os.Args[1])
 			os.Exit(2)
 		}
 	} else {
@@ -113,4 +116,47 @@ func initAdmin(ctx context.Context, st *store.Store, flagPass string) error {
 		return fmt.Errorf("管理员密码最短 10 位（docs/05 §3.2）")
 	}
 	return st.CreateUser(ctx, "admin", pass)
+}
+
+// adminCmd herd admin 子命令：reset-password（忘记密码时的运维入口）。
+func adminCmd(args []string) {
+	fs := flag.NewFlagSet("admin reset-password", flag.ExitOnError)
+	dataDir := fs.String("data", "./data", "数据目录")
+	user := fs.String("user", "admin", "用户名")
+	newPass := fs.String("new-password", "", "新密码（缺省则生成随机密码打印）")
+	_ = fs.Parse(args)
+	if fs.NArg() > 0 && fs.Arg(0) != "reset-password" {
+		fmt.Fprintf(os.Stderr, "用法：herd admin reset-password [--data dir] [--user name] [--new-password pwd]\n")
+		os.Exit(2)
+	}
+	st, err := store.Open(*dataDir)
+	if err != nil {
+		slog.Error("打开数据库失败", "err", err)
+		os.Exit(1)
+	}
+	defer st.Close()
+	ctx := context.Background()
+	u, err := st.GetUser(ctx, *user)
+	if err != nil || u == nil {
+		slog.Error("用户不存在", "user", *user)
+		os.Exit(1)
+	}
+	pass := *newPass
+	if pass == "" {
+		b := make([]byte, 12)
+		_, _ = rand.Read(b)
+		pass = hex.EncodeToString(b)
+	}
+	if len(pass) < 10 {
+		slog.Error("密码最短 10 位（docs/05 §3.2）")
+		os.Exit(1)
+	}
+	if err := st.UpdatePassword(ctx, u.ID, pass); err != nil {
+		slog.Error("重置失败", "err", err)
+		os.Exit(1)
+	}
+	st.AddAudit(ctx, u.ID, u.Username, "auth.password_reset", u.Username, "", "localhost")
+	slog.Info("密码已重置；面板内存会话不包含本操作，全部既有会话需重新登录")
+	fmt.Println("  用户名: " + *user)
+	fmt.Println("  新密码: " + pass)
 }

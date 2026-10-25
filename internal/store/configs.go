@@ -85,7 +85,10 @@ func (s *Store) CreateConfigTarget(ctx context.Context, t *ConfigTarget, firstCo
 		return 0, 0, err
 	}
 	versionID, err := vres.LastInsertId()
-	return targetID, versionID, err
+	if err != nil {
+		return 0, 0, err
+	}
+	return targetID, versionID, tx.Commit()
 }
 
 // GetConfigTarget 取目标（校验归属节点）。

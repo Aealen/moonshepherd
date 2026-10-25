@@ -8,14 +8,15 @@ import (
 )
 
 // Command 指令记录（审计主体，不可删除）。
+// Stdout/Stderr 仅详情接口返回正文；列表查询在 SQL 层置空（docs/06 §2.4）。
 type Command struct {
 	ID         string          `json:"command_id"`
 	NodeID     string          `json:"node_id"`
 	Type       string          `json:"type"`
 	Payload    json.RawMessage `json:"payload"`
 	Status     string          `json:"status"`
-	Stdout     string          `json:"-"`
-	Stderr     string          `json:"-"`
+	Stdout     string          `json:"stdout,omitempty"`
+	Stderr     string          `json:"stderr,omitempty"`
 	Truncated  bool            `json:"truncated"`
 	ExitCode   *int            `json:"exit_code,omitempty"`
 	Stages     json.RawMessage `json:"stages,omitempty"`

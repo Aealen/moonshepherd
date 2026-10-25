@@ -103,10 +103,7 @@ func (s *Server) handleEditVersion(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusNotFound, "config_version_not_found", "版本不存在")
 		return
 	}
-	if v.Status != "draft" {
-		writeErr(w, http.StatusConflict, "conflict", "仅 draft 版本可编辑；请基于它创建新版本")
-		return
-	}
+	// 任意状态版本均可"基于它保存新草稿"：产生新版本行，不改旧版本（不可变版本链，docs/01 §6.2）
 	newID, err := s.st.AppendDraftVersion(r.Context(), v.TargetID, req.Content, sessionFrom(r).Username)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "internal", err.Error())
