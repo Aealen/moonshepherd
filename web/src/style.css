@@ -1,0 +1,78 @@
+/* 牧云全局样式：暗色运维面板审美 */
+html, body, #app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: #101014;
+  color: #e8eaf0;
+  font-family: "Inter", "HarmonyOS Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 终端风输出块 */
+.term {
+  background: #0b0b0f;
+  border: 1px solid #2a2a33;
+  border-radius: 6px;
+  padding: 12px;
+  font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 480px;
+  overflow: auto;
+  margin: 0;
+}
+
+.term .out-err { color: #ff8f8f; }
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #2e2e38; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #3d3d4a; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* 页面通用 */
+.page {
+  padding: 20px 24px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.muted { color: #8b8b98; }
+.mono { font-family: Consolas, "JetBrains Mono", monospace; }
+
+/* 登录页 */
+.login-wrap {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(1200px 500px at 70% -10%, rgba(94, 200, 148, 0.12), transparent),
+    radial-gradient(800px 400px at 10% 110%, rgba(80, 140, 255, 0.08), transparent),
+    #101014;
+}
+.login-card {
+  width: 380px;
+  padding: 40px 36px 32px;
+  border-radius: 14px;
+  background: rgba(24, 24, 30, 0.9);
+  border: 1px solid #2a2a33;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.brand-mark {
+  font-size: 40px;
+  line-height: 1;
+}

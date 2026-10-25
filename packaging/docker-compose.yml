@@ -1,0 +1,18 @@
+# 牧云面板部署样例（docs/01 §4.2：任意 Docker 机 / NAS）
+# 首次启动日志会打印随机 admin 密码（或用 HERD_ADMIN_PASSWORD 指定）。
+services:
+  herd:
+    image: herd-panel:latest
+    build:
+      context: ..
+      dockerfile: packaging/Dockerfile.panel
+    container_name: herd
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+    # 公网部署建议前置反代终结 TLS（docs/05 §3.1）；直跑则：
+    # environment:
+    #   - HERD_ADMIN_PASSWORD=change-me-please
+    # 或挂载证书并加 command: ["server","--data","/app/data","--tls-cert","/certs/full.pem","--tls-key","/certs/priv.pem"]

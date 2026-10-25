@@ -1,0 +1,25 @@
+# Shepherd Agent 镜像：FROM scratch 静态二进制（docs/01 §3.1：无 shell、极小攻击面）
+# 运行示例（Unraid / 任何 Docker 机）：
+#   docker run -d --name shepherd --restart unless-stopped \
+#     -e HERD_SERVER=wss://panel.example.com \
+#     -e HERD_TOKEN=rt_xxx \
+#     -v /var/run/docker.sock:/var/run/docker.sock \
+#     -v /etc/nginx:/etc/nginx:ro \
+#     -v shepherd-data:/data \
+#     herd/shepherd:latest
+FROM golang:1.27-alpine AS build
+ARG VERSION=dev
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags "-s -w -X github.com/maxonphong/herd/version.Version=${VERSION}" \
+    -o /out/shepherd ./cmd/shepherd
+
+FROM scratch
+COPY --from=build /out/shepherd /shepherd
+# CA 证书：自更新 https 下载需要
+COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+VOLUME /data
+ENV HERD_CRED_FILE=/data/credentials.json
+ENTRYPOINT ["/shepherd"]

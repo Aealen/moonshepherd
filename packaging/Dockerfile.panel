@@ -1,0 +1,27 @@
+# 牧云面板镜像：多阶段（node 构建前端 → go 构建单二进制 → 精简运行层）
+FROM node:22-alpine AS web
+WORKDIR /src/web
+COPY web/package.json web/package-lock.json* ./
+RUN npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+COPY web/ ./
+RUN npm run build
+
+FROM golang:1.27-alpine AS build
+ARG VERSION=dev
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+COPY --from=web /src/web/dist /src/web/dist
+RUN CGO_ENABLED=0 go build -ldflags "-s -w -X github.com/maxonphong/herd/version.Version=${VERSION}" \
+    -o /out/herd ./cmd/herd
+
+FROM alpine:3.20
+RUN adduser -D -H -u 1000 herd
+USER herd
+WORKDIR /app
+VOLUME /app/data
+COPY --from=build /out/herd /app/herd
+EXPOSE 8080
+ENTRYPOINT ["/app/herd"]
+CMD ["server", "--data", "/app/data", "--addr", ":8080"]
