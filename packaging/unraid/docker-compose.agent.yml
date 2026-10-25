@@ -1,0 +1,26 @@
+# 牧云 Agent(Herd)—— Unraid / 任意 Docker 机部署
+# 面板地址按实际环境修改;网关路径 /agent 由面板自带,反代透传即可。
+#
+# 开机自启:restart: unless-stopped。
+# Unraid 开机 → 阵列启动 → Docker 服务自启 → 本容器自动恢复,无需任何脚本。
+# (除非-stopped 语义:手动 docker stop 过的容器不会自启,docker start 一次即恢复)
+#
+# 升级:docker compose pull && docker compose up -d
+services:
+  herd:
+    image: ghcr.io/aealen/herd:latest
+    container_name: herd
+    restart: unless-stopped
+    environment:
+      - HERD_SERVER=wss://moonshepherd.aowu.tech
+      # 全新注册时填面板「节点注册」生成的一次性 Token,注册成功后可移除:
+      # - HERD_TOKEN=rt_xxxxxxxxxxxxxxxx
+    volumes:
+      # Docker 应用探测与容器指令执行(挂宿主 socket 即可管理宿主 Docker)
+      - /var/run/docker.sock:/var/run/docker.sock
+      # credentials.json 落盘(NodeID + NodeSecret,重新注册前必须保住)
+      - /mnt/user/appdata/herd:/data
+    # 沿用旧二进制 Agent 凭据(面板数据随库迁移的情形):
+    #   1. 停掉旧二进制 Agent(同一节点勿双跑,否则注册两个节点)
+    #   2. 把旧 credentials.json 拷到 /mnt/user/appdata/herd/credentials.json
+    #   3. HERD_SERVER 环境变量自动覆盖凭据里的旧面板地址(agent.go §131)
