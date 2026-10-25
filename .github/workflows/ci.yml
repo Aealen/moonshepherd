@@ -28,11 +28,8 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Go 静态检查与测试
-        run: |
-          go vet ./...
-          go test ./...
-
+      # 先产出 web/dist 再跑 Go 检查：web/embed.go 的 go:embed all:dist
+      # 要求编译期该目录存在（与 Makefile、Dockerfile.panel 的顺序一致）
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -44,6 +41,11 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           npm run build
+
+      - name: Go 静态检查与测试
+        run: |
+          go vet ./...
+          go test ./...
 
   docker:
     needs: test
