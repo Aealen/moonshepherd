@@ -1,4 +1,5 @@
 # Shepherd Agent 镜像：FROM scratch 静态二进制（docs/01 §3.1：无 shell、极小攻击面）
+# GOPROXY 仅是构建期加速选项，默认官方源。
 # 运行示例（Unraid / 任何 Docker 机）：
 #   docker run -d --name shepherd --restart unless-stopped \
 #     -e HERD_SERVER=wss://panel.example.com \
@@ -6,9 +7,11 @@
 #     -v /var/run/docker.sock:/var/run/docker.sock \
 #     -v /etc/nginx:/etc/nginx:ro \
 #     -v shepherd-data:/data \
-#     herd/shepherd:latest
+#     ghcr.io/aealen/shepherd:latest
 FROM golang:1.27-alpine AS build
 ARG VERSION=dev
+ARG GOPROXY=https://proxy.golang.org,direct
+ENV GOPROXY=${GOPROXY}
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download

@@ -38,6 +38,36 @@
   (备选:裸二进制+UserScripts)              (install.sh 一条命令)
 ```
 
+## 部署
+
+### Docker（推荐，CI 自动构建）
+
+push 到 GitHub 后 CI 自动测试并构建双镜像（amd64/arm64）推 GHCR：
+
+```bash
+# 面板（任意 Docker 机 / NAS）
+docker run -d --name herd --restart unless-stopped \
+  -p 8080:8080 -v ./data:/app/data \
+  ghcr.io/aealen/herd-panel:latest
+
+# Agent（Unraid 等；面板发放 Token 后）
+docker run -d --name shepherd --restart unless-stopped \
+  -e HERD_SERVER=wss://panel.example.com \
+  -e HERD_TOKEN=rt_xxx \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /etc/nginx:/etc/nginx \
+  -v shepherd-data:/data \
+  ghcr.io/aealen/shepherd:latest
+```
+
+首次启动日志打印随机 admin 密码（或 `-e HERD_ADMIN_PASSWORD=...` 指定）。公网部署必须 TLS（前置反代或挂载证书，见 [docs/05-安全设计](docs/05-安全设计.md)）。
+
+也可用仓库内 `packaging/docker-compose.yml` 本地构建部署。
+
+### 二进制
+
+`make cross` 产出 Linux amd64/arm64 二进制（Agent 另有 armv7），配 systemd 或 User Scripts 运行。
+
 ## 快速开始（开发）
 
 ```bash
