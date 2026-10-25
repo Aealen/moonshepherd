@@ -38,8 +38,9 @@ func newGateway(s *Server) *gateway {
 }
 
 func (g *gateway) handler(w http.ResponseWriter, r *http.Request) {
-	// 明文 ws:// 仅允许本机回环调试（docs/04 §1）
-	if r.TLS == nil {
+	// 明文 ws:// 仅限调试场景：开发模式（本地/局域网联调）或本机回环（docs/04 §1）。
+	// 生产部署必须 TLS 或前置反代（docs/05 §3.1）。
+	if r.TLS == nil && !g.srv.opt.Dev {
 		host, _, err := net.SplitHostPort(r.RemoteAddr)
 		if err != nil || !isLoopback(host) {
 			http.Error(w, "TLS required", http.StatusUpgradeRequired)

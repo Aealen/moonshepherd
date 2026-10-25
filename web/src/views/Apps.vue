@@ -2,12 +2,22 @@
 import { h, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  NDataTable, NTag, NInput, NSelect, NSpace, NPagination, NEmpty, useMessage, type DataTableColumns,
+  NDataTable, NTag, NInput, NSelect, NSpace, NPagination, NEmpty, NButton, useMessage, type DataTableColumns,
 } from 'naive-ui'
-import { api, fmtTime, type AppRow, type Page } from '../api'
+import { api, fmtTime, type AppRow, type Node, type Page } from '../api'
+import AppDetailDrawer from '../components/AppDetailDrawer.vue'
 
 const router = useRouter()
 const message = useMessage()
+
+// ---------- 详情抽屉 ----------
+const detailRow = ref<AppRow | null>(null)
+const showDetail = ref(false)
+
+function openDetail(r: AppRow) {
+  detailRow.value = r
+  showDetail.value = true
+}
 
 const apps = ref<AppRow[]>([])
 const total = ref(0)
@@ -16,10 +26,19 @@ const pageSize = 20
 const loading = ref(false)
 const probeFilter = ref<string | null>(null)
 const typeFilter = ref<string | null>(null)
+const nodeFilter = ref<string | null>(null)
 const query = ref('')
 
-// 探测器/类型下拉选项随数据动态生成
+// 探测器/节点下拉选项随数据动态生成
 const probeOptions = ref<{ label: string; value: string }[]>([])
+const nodeOptions = ref<{ label: string; value: string }[]>([])
+
+async function loadNodes() {
+  try {
+    const data = await api.get<Page<Node>>(`/nodes?page_size=100`)
+    nodeOptions.value = (data.data ?? []).map((n) => ({ label: n.name, value: n.id }))
+  } catch { /* 忽略 */ }
+}
 
 const columns: DataTableColumns<AppRow> = [
   {
@@ -29,7 +48,7 @@ const columns: DataTableColumns<AppRow> = [
       r.version ? h('div', { class: 'muted mono', style: 'font-size:11.5px' }, r.version) : null,
     ]),
   },
-  { title: '节点', key: 'node_name', width: 140, render: (r) => h('span', { style: 'cursor:pointer; color:#7ad39a', onClick: () => router.push(`/nodes/${r.node_id}`) }, r.node_name) },
+  { title: '节点', key: 'node_name', width: 140, render: (r) => h('span', { style: 'cursor:pointer; color:#7ab2ff', onClick: () => router.push(`/nodes/${r.node_id}`) }, r.node_name) },
   { title: '类型', key: 'app_type', width: 100, render: (r) => h(NTag, { size: 'tiny', bordered: false }, { default: () => r.app_type }) },
   { title: '探测器', key: 'probe_name', width: 90, render: (r) => h('span', { class: 'muted mono', style: 'font-size:12px' }, r.probe_name) },
   {
@@ -45,12 +64,29 @@ const columns: DataTableColumns<AppRow> = [
   },
   {
     title: '端口/备注', key: 'detail', minWidth: 180,
-    render: (r) => h('span', { class: 'muted mono', style: 'font-size:12px' },
-      [r.detail?.ports, r.detail?.compose_project ? `compose:${r.detail.compose_project}` : null]
-        .filter(Boolean).join(' · ') || '—'),
+    render: (r) => h('span', { class: 'muted mono', style: 'font-size:12px' }, portSummary(r)),
   },
-  { title: '探测时间', key: 'detected_at', width: 160, render: (r) => h('span', { class: 'muted' }, fmtTime(r.detected_at)) },
+  { title: '探测时间', key: 'detected_at', width: 150, render: (r) => h('span', { class: 'muted' }, fmtTime(r.detected_at)) },
+  {
+    title: '', key: 'op', width: 70,
+    render: (r) => h(NButton, { size: 'tiny', quaternary: true, type: 'primary', onClick: () => openDetail(r) }, { default: () => '详情' }),
+  },
 ]
+
+// 端口摘要：兼容数组（sock 探测）与字符串（旧数据/CLI 降级）
+function portSummary(r: AppRow): string {
+  const parts: string[] = []
+  const p = r.detail?.ports
+  if (Array.isArray(p)) {
+    for (const e of p) {
+      if (e.public) parts.push(`${e.public}:${e.private}`)
+    }
+  } else if (typeof p === 'string' && p) {
+    parts.push(p)
+  }
+  if (r.detail?.compose_project) parts.push(`compose:${r.detail.compose_project}`)
+  return parts.join(' · ') || '—'
+}
 
 async function load() {
   loading.value = true
@@ -58,6 +94,7 @@ async function load() {
     const params = new URLSearchParams({ page: String(page.value), page_size: String(pageSize) })
     if (probeFilter.value) params.set('probe', probeFilter.value)
     if (typeFilter.value) params.set('app_type', typeFilter.value)
+    if (nodeFilter.value) params.set('node_id', nodeFilter.value)
     if (query.value) params.set('q', query.value)
     const data = await api.get<Page<AppRow>>(`/apps?${params}`)
     apps.value = data.data ?? []
@@ -73,7 +110,10 @@ async function load() {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  loadNodes()
+  load()
+})
 </script>
 
 <template>
@@ -81,7 +121,9 @@ onMounted(load)
     <div class="page-title">📦 应用中心 <span class="muted" style="font-size:13px; font-weight:400">跨节点 · 谁装了什么</span></div>
 
     <n-space style="margin-bottom:14px" align="center">
-      <n-select v-model:value="probeFilter" size="small" style="width:130px" clearable placeholder="探测器"
+      <n-select v-model:value="nodeFilter" size="small" style="width:150px" clearable filterable placeholder="节点"
+        :options="nodeOptions" @update:value="page = 1; load()" />
+      <n-select v-model:value="probeFilter" size="small" style="width:120px" clearable placeholder="探测器"
         :options="probeOptions" @update:value="page = 1; load()" />
       <n-select v-model:value="typeFilter" size="small" style="width:120px" clearable placeholder="类型"
         :options="[
@@ -98,5 +140,8 @@ onMounted(load)
     <div style="display:flex; justify-content:flex-end; margin-top:14px" v-if="total > pageSize">
       <n-pagination v-model:page="page" :page-size="pageSize" :item-count="total" @update:page="load" />
     </div>
+
+    <!-- 应用详情抽屉（共享组件） -->
+    <AppDetailDrawer v-model:show="showDetail" :app="detailRow" />
   </div>
 </template>

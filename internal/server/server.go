@@ -144,8 +144,11 @@ func (s *Server) buildRouter() http.Handler {
 	})
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
-		// 非 API 路径 → 前端 SPA 路由兜底
+		// 非 API 路径：先尝试 dist 根级静态文件（logo 等），再落前端 SPA 路由兜底
 		if !strings.HasPrefix(r.URL.Path, "/api/") {
+			if web.TryServeStatic(w, r) {
+				return
+			}
 			web.ServeIndex(w, r)
 			return
 		}
@@ -158,7 +161,9 @@ func (s *Server) buildRouter() http.Handler {
 		r.Handle("/assets/*", http.StripPrefix("/", fs))
 		r.Get("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 			if b, err := web.Favicon(); err == nil {
-				w.Header().Set("Content-Type", "image/svg+xml")
+				w.Header().Set("Content-Type", "image/png")
+				// no-cache：每次协商校验，LOGO 更新后 favicon 立即生效
+				w.Header().Set("Cache-Control", "no-cache")
 				_, _ = w.Write(b)
 			}
 		})

@@ -40,9 +40,52 @@ type sockContainer struct {
 	State  string            `json:"State"`
 	Labels map[string]string `json:"Labels"`
 	Ports  []struct {
-		PrivatePort int `json:"PrivatePort"`
-		PublicPort  int `json:"PublicPort"`
+		IP          string `json:"IP"`
+		PrivatePort int    `json:"PrivatePort"`
+		PublicPort  int    `json:"PublicPort"`
+		Type        string `json:"Type"`
 	} `json:"Ports"`
+}
+
+// inspectDetail /containers/{id}/json 的关注子集（docs/06 应用详情）。
+type inspectDetail struct {
+	Config struct {
+		Env    []string          `json:"Env"`
+		Labels map[string]string `json:"Labels"`
+	} `json:"Config"`
+	NetworkSettings struct {
+		Networks map[string]struct {
+			IPAddress string `json:"IPAddress"`
+		} `json:"Networks"`
+	} `json:"NetworkSettings"`
+	Mounts []struct {
+		Source      string `json:"Source"`
+		Destination string `json:"Destination"`
+		Mode        string `json:"Mode"`
+		RW          bool   `json:"RW"`
+	} `json:"Mounts"`
+}
+
+// portEntry 详情端口条目。
+type portEntry struct {
+	IP      string `json:"ip"`
+	Public  int    `json:"public"`
+	Private int    `json:"private"`
+	Type    string `json:"type"`
+}
+
+// mountEntry 详情挂载条目。
+type mountEntry struct {
+	Source string `json:"source"`
+	Dest   string `json:"dest"`
+	RW     bool   `json:"rw"`
+	Mode   string `json:"mode,omitempty"`
+}
+
+// netEntry 详情网络条目。
+type netEntry struct {
+	Name string `json:"name"`
+	IP   string `json:"ip"`
 }
 
 // cliContainer docker ps --format {{json .}} 条目。
@@ -86,18 +129,87 @@ func detectViaSock(ctx context.Context, sock string) ([]protocol.App, error) {
 		if len(c.Names) > 0 {
 			name = strings.TrimPrefix(c.Names[0], "/")
 		}
-		var portStrs []string
-		for _, p := range c.Ports {
-			if p.PublicPort != 0 {
-				portStrs = append(portStrs, fmt.Sprintf("%d:%d", p.PublicPort, p.PrivatePort))
+		detail := map[string]any{"image": c.Image}
+		if len(c.Ports) > 0 {
+			ports := make([]portEntry, 0, len(c.Ports))
+			for _, p := range c.Ports {
+				ports = append(ports, portEntry{IP: p.IP, Public: p.PublicPort, Private: p.PrivatePort, Type: p.Type})
+			}
+			detail["ports"] = ports
+		}
+		for k, v := range c.Labels {
+			if strings.HasPrefix(k, "com.docker.compose.") && v != "" {
+				detail[composeKey(k)] = v
 			}
 		}
-		apps = append(apps, containerApp(c.ID, name, c.Image, c.State, c.Labels, strings.Join(portStrs, ",")))
+		if c.ID != "" {
+			detail["id"] = c.ID
+			// inspect 补全：挂载 / 网络 / 环境变量（失败降级，保持 list 级详情）
+			if insp := inspectContainer(ctx, client, c.ID); insp != nil {
+				if len(insp.Mounts) > 0 {
+					ms := make([]mountEntry, 0, len(insp.Mounts))
+					for _, m := range insp.Mounts {
+						ms = append(ms, mountEntry{Source: m.Source, Dest: m.Destination, RW: m.RW, Mode: m.Mode})
+					}
+					detail["mounts"] = ms
+				}
+				var nets []netEntry
+				for nname, n := range insp.NetworkSettings.Networks {
+					nets = append(nets, netEntry{Name: nname, IP: n.IPAddress})
+				}
+				if len(nets) > 0 {
+					detail["networks"] = nets
+				}
+				if len(insp.Config.Env) > 0 {
+					detail["env"] = insp.Config.Env
+				}
+			}
+		}
+		apps = append(apps, protocol.App{
+			AppType: "docker", Name: name, Version: c.Image,
+			Status: containerState(c.State), Detail: detail,
+		})
 	}
 	return apps, nil
 }
 
-// detectViaCLI 降级：docker ps -a --format {{json .}}（BusyBox 环境兜底）。
+// inspectContainer 拉单个容器完整信息；任何失败返回 nil（探测降级原则：list 数据仍在）。
+func inspectContainer(ctx context.Context, client *http.Client, id string) *inspectDetail {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://docker/containers/"+id+"/json", nil)
+	if err != nil {
+		return nil
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil
+	}
+	var d inspectDetail
+	if err := json.NewDecoder(resp.Body).Decode(&d); err != nil {
+		return nil
+	}
+	return &d
+}
+
+// composeKey com.docker.compose.project → compose_project。
+func composeKey(label string) string {
+	return strings.ReplaceAll(strings.TrimPrefix(label, "com.docker.compose."), ".", "_")
+}
+
+func containerState(state string) string {
+	switch state {
+	case "running":
+		return protocol.AppRunning
+	case "exited", "dead", "created", "paused", "restarting":
+		return protocol.AppStopped
+	}
+	return protocol.AppUnknown
+}
+
+// detectViaCLI 降级：docker ps -a --format {{json .}}（BusyBox 环境兜底；无端口/挂载详情，如实少报）。
 func detectViaCLI(ctx context.Context) ([]protocol.App, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -114,33 +226,17 @@ func detectViaCLI(ctx context.Context) ([]protocol.App, error) {
 		if json.Unmarshal([]byte(line), &c) != nil {
 			continue
 		}
-		apps = append(apps, containerApp(c.ID, c.Names, c.Image, c.State, nil, ""))
+		name := c.Names
+		if name == "" {
+			name = shortID(c.ID)
+		}
+		apps = append(apps, protocol.App{
+			AppType: "docker", Name: name, Version: c.Image,
+			Status: containerState(c.State),
+			Detail: map[string]any{"image": c.Image, "id": c.ID},
+		})
 	}
 	return apps, nil
-}
-
-func containerApp(id, name, image, state string, labels map[string]string, ports string) protocol.App {
-	if name == "" {
-		name = shortID(id)
-	}
-	status := protocol.AppUnknown
-	switch state {
-	case "running":
-		status = protocol.AppRunning
-	case "exited", "dead", "created", "paused", "restarting":
-		status = protocol.AppStopped
-	}
-	detail := map[string]any{"image": image}
-	if labels["com.docker.compose.project"] != "" {
-		detail["compose_project"] = labels["com.docker.compose.project"]
-	}
-	if ports != "" {
-		detail["ports"] = ports
-	}
-	if id != "" {
-		detail["id"] = id
-	}
-	return protocol.App{AppType: "docker", Name: name, Version: image, Status: status, Detail: detail}
 }
 
 func shortID(id string) string {

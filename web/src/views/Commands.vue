@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { h, onMounted, onUnmounted, ref } from 'vue'
 import {
-  NCard, NDataTable, NTag, NButton, NInput, NInputNumber, NSelect, NSpace, NModal, NTimeline,
-  NTimelineItem, NDrawer, NDrawerContent, NDescriptions, NDescriptionsItem, NPagination,
-  NPopconfirm, useMessage, type DataTableColumns,
+  NCard, NDataTable, NTag, NButton, NInput, NInputNumber, NSelect, NSpace, NModal,
+  NDescriptions, NDescriptionsItem, NPagination, NPopconfirm, useMessage, type DataTableColumns,
 } from 'naive-ui'
 import { api, fmtTime, type Command, type Node, type Page } from '../api'
 import { onEvent } from '../api/ws'
+import CommandDetailDrawer from '../components/CommandDetailDrawer.vue'
 
 const message = useMessage()
 
@@ -27,7 +27,7 @@ const statusFilter = ref<string | null>(null)
 const typeFilter = ref<string | null>(null)
 
 // ---------- 详情抽屉 ----------
-const detail = ref<Command | null>(null)
+const detailId = ref<string | null>(null)
 const showDetail = ref(false)
 
 const statusTag = (s: string) => {
@@ -122,11 +122,9 @@ async function sendExec() {
   }
 }
 
-async function openDetail(c: Command) {
-  try {
-    detail.value = await api.get<Command>(`/commands/${c.command_id}`)
-    showDetail.value = true
-  } catch (e: any) { message.error(e.message) }
+function openDetail(c: Command) {
+  detailId.value = c.command_id
+  showDetail.value = true
 }
 
 async function retry(c: Command) {
@@ -195,38 +193,7 @@ onUnmounted(() => off?.())
       </n-descriptions>
     </n-modal>
 
-    <!-- 指令详情抽屉：输出 + config.apply 阶段时间线 -->
-    <n-drawer v-model:show="showDetail" :width="620" placement="right">
-      <n-drawer-content :title="`指令 ${detail?.type ?? ''}`" closable>
-        <template v-if="detail">
-          <n-descriptions :column="2" size="small" style="margin-bottom:14px">
-            <n-descriptions-item label="状态"><n-tag size="tiny" round :bordered="false">{{ detail.status }}</n-tag></n-descriptions-item>
-            <n-descriptions-item label="退出码">{{ detail.exit_code ?? '—' }}</n-descriptions-item>
-            <n-descriptions-item label="发起人">{{ detail.created_by }}</n-descriptions-item>
-            <n-descriptions-item label="创建时间">{{ fmtTime(detail.created_at) }}</n-descriptions-item>
-          </n-descriptions>
-
-          <template v-if="detail.stages?.length">
-            <div style="font-weight:600; margin:10px 0">下发阶段</div>
-            <n-timeline>
-              <n-timeline-item v-for="s in detail.stages" :key="s.name"
-                :type="s.status === 'success' ? 'success' : s.status === 'failed' ? 'error' : 'default'"
-                :title="s.name" :content="s.detail" />
-            </n-timeline>
-          </template>
-
-          <div v-if="detail.error" style="color:#ff8f8f; margin:12px 0 6px; font-weight:600">错误</div>
-          <pre v-if="detail.error" class="term out-err">{{ detail.error }}</pre>
-
-          <div style="font-weight:600; margin:12px 0 6px">stdout
-            <span v-if="detail.truncated" class="muted" style="font-weight:400">（已截断）</span>
-          </div>
-          <pre class="term">{{ detail.stdout || '（空）' }}</pre>
-
-          <div v-if="detail.stderr" style="font-weight:600; margin:12px 0 6px">stderr</div>
-          <pre v-if="detail.stderr" class="term out-err">{{ detail.stderr }}</pre>
-        </template>
-      </n-drawer-content>
-    </n-drawer>
+    <!-- 指令详情抽屉（共享组件）：输出 + config.apply 阶段时间线 -->
+    <CommandDetailDrawer v-model:show="showDetail" :command-id="detailId" />
   </div>
 </template>

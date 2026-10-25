@@ -1,1 +1,0 @@
-{"root":["./src/main.ts","./src/router.ts","./src/api/index.ts","./src/api/ws.ts","./src/app.vue","./src/views/apps.vue","./src/views/commands.vue","./src/views/configversion.vue","./src/views/login.vue","./src/views/nodedetail.vue","./src/views/nodes.vue","./src/views/system.vue"],"version":"5.9.3"}

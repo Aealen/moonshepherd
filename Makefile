@@ -12,15 +12,15 @@ all: frontend backend
 
 ## dev：本地开发（前端 vite 热更 + 后端 :8080，vite proxy 转发 /api 与 /agent）
 dev:
-	$(MAKE) -C web dev & \
+	cd web && npm run dev & \
 	$(GOFLAGS) go run ./cmd/herd server --dev --data ./data
 
 ## frontend：构建前端到 web/dist（embed 源）
 frontend:
-	$(MAKE) -C web build
+	cd web && npm install --no-audit --no-fund && npm run build
 
-## backend：编译面板与 Agent（本机平台）
-backend:
+## backend：编译面板与 Agent（本机平台；先构建前端保证 embed 内容最新）
+backend: frontend
 	$(GOFLAGS) go build -ldflags '$(LDFLAGS)' -o dist/herd ./cmd/herd
 	$(GOFLAGS) go build -ldflags '$(LDFLAGS)' -o dist/shepherd ./cmd/shepherd
 

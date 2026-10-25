@@ -7,7 +7,6 @@ import {
 import { api, fmtTime, type AuditLog, type Page } from '../api'
 
 const message = useMessage()
-
 const info = ref<{ panel_version: string; node_total: number; node_online: number; command_total: number } | null>(null)
 const logs = ref<AuditLog[]>([])
 const total = ref(0)
@@ -31,7 +30,21 @@ const logColumns: DataTableColumns<AuditLog> = [
   },
   { title: '目标', key: 'target', width: 220, render: (r) => h('span', { class: 'mono muted', style: 'font-size:12px' }, r.target || '—') },
   { title: 'IP', key: 'ip', width: 130, render: (r) => h('span', { class: 'mono muted' }, r.ip) },
+  {
+    title: '', key: 'op', width: 60,
+    render: (r) => r.detail && Object.keys(r.detail).length
+      ? h(NButton, { size: 'tiny', quaternary: true, type: 'primary', onClick: () => openAuditDetail(r) }, { default: () => '详情' })
+      : null,
+  },
 ]
+
+// 审计详情（操作参数原始 JSON）
+const auditDetail = ref<AuditLog | null>(null)
+const showAuditDetail = ref(false)
+function openAuditDetail(r: AuditLog) {
+  auditDetail.value = r
+  showAuditDetail.value = true
+}
 
 async function load() {
   try {
@@ -98,6 +111,14 @@ onMounted(load)
         <n-form-item label="重复新密码"><n-input v-model:value="newPwd2" type="password" show-password-on="click" /></n-form-item>
       </n-form>
       <div class="muted" style="font-size:12px">修改成功后其他设备的会话将全部失效</div>
+    </n-modal>
+
+    <!-- 审计详情：操作参数原始 JSON -->
+    <n-modal v-model:show="showAuditDetail" preset="card" :title="`审计详情 · ${auditDetail?.action ?? ''}`" style="width:560px">
+      <pre class="term">{{ JSON.stringify(auditDetail?.detail ?? {}, null, 2) }}</pre>
+      <div class="muted" style="font-size:12px; margin-top:8px">
+        {{ auditDetail?.username }} @ {{ auditDetail?.ip }} · {{ fmtTime(auditDetail?.created_at) }}
+      </div>
     </n-modal>
   </div>
 </template>

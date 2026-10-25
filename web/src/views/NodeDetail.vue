@@ -7,6 +7,8 @@ import {
 } from 'naive-ui'
 import { api, fmtAgo, fmtTime, type AppRow, type Command, type ConfigTarget, type Metric, type Node } from '../api'
 import { onEvent } from '../api/ws'
+import AppDetailDrawer from '../components/AppDetailDrawer.vue'
+import CommandDetailDrawer from '../components/CommandDetailDrawer.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -100,21 +102,31 @@ const appColumns: DataTableColumns<AppRow> = [
     title: '详情', key: 'detail', minWidth: 220,
     render: (r) => h('span', { class: 'muted mono', style: 'font-size:12px' }, detailSummary(r)),
   },
-  { title: '探测时间', key: 'detected_at', width: 160, render: (r) => fmtTime(r.detected_at) },
+  { title: '探测时间', key: 'detected_at', width: 150, render: (r) => fmtTime(r.detected_at) },
+  {
+    title: '', key: 'op', width: 70,
+    render: (r) => h(NButton, { size: 'tiny', quaternary: true, type: 'primary', onClick: () => openAppDetail(r) }, { default: () => '详情' }),
+  },
 ]
 
 function detailSummary(r: AppRow): string {
   const d = r.detail ?? {}
   const parts: string[] = []
+  if (Array.isArray(d.ports)) {
+    for (const p of d.ports) {
+      if (p.public) parts.push(`${p.public}:${p.private}`)
+    }
+  } else if (d.ports) {
+    parts.push(String(d.ports))
+  }
   if (d.compose_project) parts.push(`compose:${d.compose_project}`)
-  if (d.ports) parts.push(String(d.ports))
   if (d.description) parts.push(String(d.description))
   if (d.reason) parts.push(String(d.reason))
   return parts.join(' · ') || '—'
 }
 
 const cmdColumns: DataTableColumns<Command> = [
-  { title: '指令', key: 'type', width: 120, render: (r) => h('span', { class: 'mono' }, r.type) },
+  { title: '指令', key: 'type', width: 110, render: (r) => h('span', { class: 'mono' }, r.type) },
   {
     title: '状态', key: 'status', width: 90,
     render: (r) => {
@@ -130,9 +142,28 @@ const cmdColumns: DataTableColumns<Command> = [
     render: (r) => h('span', { class: 'mono muted', style: 'font-size:12px' },
       r.type === 'exec' ? (r.payload?.cmd ?? '') : r.type === 'config.apply' ? (r.payload?.target_path ?? '') : ''),
   },
-  { title: '发起人', key: 'created_by', width: 90 },
-  { title: '时间', key: 'created_at', width: 160, render: (r) => fmtTime(r.created_at) },
+  { title: '发起人', key: 'created_by', width: 80 },
+  { title: '时间', key: 'created_at', width: 150, render: (r) => fmtTime(r.created_at) },
+  {
+    title: '', key: 'op', width: 70,
+    render: (r) => h(NButton, { size: 'tiny', quaternary: true, type: 'primary', onClick: () => openCmdDetail(r) }, { default: () => '详情' }),
+  },
 ]
+
+// ---------- 共享抽屉 ----------
+const appDetailRow = ref<AppRow | null>(null)
+const showAppDetail = ref(false)
+function openAppDetail(r: AppRow) {
+  appDetailRow.value = r
+  showAppDetail.value = true
+}
+
+const cmdDetailId = ref<string | null>(null)
+const showCmdDetail = ref(false)
+function openCmdDetail(c: Command) {
+  cmdDetailId.value = c.command_id
+  showCmdDetail.value = true
+}
 
 const cfgColumns: DataTableColumns<ConfigTarget> = [
   { title: '应用', key: 'app_type', width: 90, render: (r) => h(NTag, { size: 'tiny', bordered: false }, { default: () => r.app_type }) },
@@ -239,7 +270,7 @@ async function createConfig() {
       <!-- 指令 -->
       <n-tab-pane name="commands" tab="指令">
         <n-data-table :columns="cmdColumns" :data="commands" :bordered="false" size="small" />
-        <div class="muted" style="margin-top:10px; font-size:12px">最近 20 条；完整历史与输出详情见「指令中心」</div>
+        <div class="muted" style="margin-top:10px; font-size:12px">最近 20 条；点击「详情」查看输出与阶段结果，全部历史见「指令中心」</div>
       </n-tab-pane>
 
       <!-- 配置 -->
@@ -268,5 +299,9 @@ async function createConfig() {
         </n-modal>
       </n-tab-pane>
     </n-tabs>
+
+    <!-- 共享详情抽屉 -->
+    <AppDetailDrawer v-model:show="showAppDetail" :app="appDetailRow" />
+    <CommandDetailDrawer v-model:show="showCmdDetail" :command-id="cmdDetailId" />
   </div>
 </template>

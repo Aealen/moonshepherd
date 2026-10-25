@@ -8,6 +8,7 @@ import {
 } from 'naive-ui'
 import { RouterLink, RouterView } from 'vue-router'
 import { onEvent, connectEvents } from './api/ws'
+import logoUrl from './assets/logo-64.png'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,10 +19,10 @@ const collapsed = ref(false)
 // 主题：暗色 + 草原绿主色（牧云意象）
 const themeOverrides: GlobalThemeOverrides = {
   common: {
-    primaryColor: '#5bbf7f',
-    primaryColorHover: '#7ad39a',
-    primaryColorPressed: '#4aa96c',
-    primaryColorSuppl: '#7ad39a',
+    primaryColor: '#5b9dff',
+    primaryColorHover: '#7ab2ff',
+    primaryColorPressed: '#4a86e8',
+    primaryColorSuppl: '#7ab2ff',
     borderRadius: '6px',
     cardColor: '#17171d',
     bodyColor: '#101014',
@@ -105,7 +106,7 @@ if (!isLogin.value) {
             :collapsed="collapsed" show-trigger @collapse="collapsed = true" @expand="collapsed = false"
           >
             <div class="brand">
-              <span class="brand-mark">🐑</span>
+              <img class="brand-mark" :src="logoUrl" alt="牧云" />
               <transition name="fade">
                 <span v-if="!collapsed" class="brand-name">牧云 Herd</span>
               </transition>
@@ -123,7 +124,7 @@ if (!isLogin.value) {
               </div>
               <n-dropdown :options="userMenu" @select="logout">
                 <n-button quaternary size="small" style="gap:8px">
-                  <n-avatar round size="small" style="background:#5bbf7f">M</n-avatar>
+                  <n-avatar round size="small" style="background:#5b9dff">M</n-avatar>
                   admin
                 </n-button>
               </n-dropdown>

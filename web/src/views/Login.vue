@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import logoUrl from '../assets/logo-64.png'
 import { useRoute, useRouter } from 'vue-router'
 import { NForm, NFormItem, NInput, NButton } from 'naive-ui'
 
@@ -47,7 +48,7 @@ async function login() {
   <div class="login-wrap">
     <div class="login-card">
       <div style="display:flex; align-items:center; gap:14px; margin-bottom:8px;">
-        <span class="brand-mark">🐑</span>
+        <img class="brand-mark" :src="logoUrl" alt="牧云" />
         <div>
           <div style="font-size:22px; font-weight:700;">牧云 Herd</div>
           <div class="muted" style="font-size:12px;">把散落在云端的服务器，当羊群来放牧</div>

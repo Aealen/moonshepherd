@@ -59,7 +59,7 @@ body {
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(1200px 500px at 70% -10%, rgba(94, 200, 148, 0.12), transparent),
+    radial-gradient(1200px 500px at 70% -10%, rgba(91, 157, 255, 0.12), transparent),
     radial-gradient(800px 400px at 10% 110%, rgba(80, 140, 255, 0.08), transparent),
     #101014;
 }
