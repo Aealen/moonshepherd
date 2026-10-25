@@ -2,6 +2,8 @@ package server
 
 import (
 	"encoding/json"
+	"net"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -86,7 +88,7 @@ func TestGatewayRegisterHelloHeartbeat(t *testing.T) {
 	conn := dialAgent(t, ts.URL)
 	writeEnv(t, conn, protocol.TypeRegister, protocol.RegisterPayload{
 		RegistrationToken: plaintext, Hostname: "nas",
-		OS: protocol.OSInfo{Name: "Unraid", Version: "7.1", Arch: "amd64"},
+		OS:           protocol.OSInfo{Name: "Unraid", Version: "7.1", Arch: "amd64"},
 		AgentVersion: "0.1.0", ProtoVersion: protocol.ProtoVersion,
 		Capabilities: []string{"docker"},
 	})
@@ -247,5 +249,102 @@ func TestLoginRateLimit(t *testing.T) {
 	}
 	if code := login("admin", "password123"); code != 429 {
 		t.Fatalf("锁定期间正确密码也应 429，实得 %d", code)
+	}
+}
+
+// ---------- TrustProxy:反代明文回源场景(docs/05 §3.1) ----------
+
+// fakeRemoteListener 把连接 RemoteAddr 改写为指定地址(模拟非回环的反代回源连接)。
+type fakeRemoteListener struct {
+	net.Listener
+	remote net.Addr
+}
+
+func (l *fakeRemoteListener) Accept() (net.Conn, error) {
+	c, err := l.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	return &fakeRemoteConn{Conn: c, remote: l.remote}, nil
+}
+
+type fakeRemoteConn struct {
+	net.Conn
+	remote net.Addr
+}
+
+func (c *fakeRemoteConn) RemoteAddr() net.Addr { return c.remote }
+
+// newPlainServerWithRemote 启动明文测试面板,来源地址固定为 remote(非 Dev 配置可控)。
+func newPlainServerWithRemote(t *testing.T, opt Options, remote string) *httptest.Server {
+	t.Helper()
+	dir := t.TempDir()
+	st, err := store.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	box, err := credenc.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opt.DataDir = dir
+	srv, err := New(opt, st, box)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ts := httptest.NewUnstartedServer(srv.Handler())
+	ts.Listener = &fakeRemoteListener{Listener: l, remote: &net.TCPAddr{IP: net.ParseIP(remote), Port: 54321}}
+	ts.Start()
+	t.Cleanup(ts.Close)
+	return ts
+}
+
+// dialAgentHeader 带 extra header 拨 /agent,返回响应与错误(握手成败由调用方断言)。
+func dialAgentHeader(t *testing.T, url string, header http.Header) (*http.Response, error) {
+	t.Helper()
+	wsURL := "ws" + strings.TrimPrefix(url, "http") + "/agent"
+	conn, resp, err := websocket.DefaultDialer.Dial(wsURL, header)
+	if conn != nil {
+		conn.Close()
+	}
+	return resp, err
+}
+
+func TestGatewayTrustProxy(t *testing.T) {
+	const nonLoopback = "10.20.40.80" // 模拟反代回源来源(Docker 网桥/跨机)
+	cases := []struct {
+		name   string
+		trust  bool
+		header http.Header
+		wantOK bool // 握手是否应成功
+	}{
+		{"明文非回环拒绝", false, nil, false},
+		{"未开信任伪造头无效", false, http.Header{"X-Forwarded-Proto": {"https"}}, false},
+		{"信任加https头放行", true, http.Header{"X-Forwarded-Proto": {"https"}}, true},
+		{"信任但http头仍拒", true, http.Header{"X-Forwarded-Proto": {"http"}}, false},
+		{"多级代理取首项", true, http.Header{"X-Forwarded-Proto": {"https, http"}}, true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			ts := newPlainServerWithRemote(t, Options{Dev: false, TrustProxy: c.trust}, nonLoopback)
+			resp, err := dialAgentHeader(t, ts.URL, c.header)
+			if c.wantOK {
+				if err != nil {
+					t.Fatalf("握手应成功,实得错误: %v (resp=%v)", err, resp)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatal("握手应被拒绝,却成功了")
+			}
+			if resp == nil || resp.StatusCode != http.StatusUpgradeRequired {
+				t.Fatalf("应返回 426 拒绝,实得 resp=%v err=%v", resp, err)
+			}
+		})
 	}
 }

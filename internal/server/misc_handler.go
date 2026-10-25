@@ -65,7 +65,7 @@ type eventSub struct {
 // handleEvents GET /api/v1/events：订阅模型 + 按 sub 过滤推送。
 // WS 只做增量提示，页面数据以 REST 为源（docs/06 §3）。
 func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
-	if r.TLS == nil && !s.opt.Dev {
+	if !s.isSecureRequest(r) && !s.opt.Dev {
 		host := clientIP(r)
 		if host != "127.0.0.1" && host != "::1" && host != "[::1]" {
 			writeErr(w, http.StatusUpgradeRequired, "tls_required", "事件通道要求 TLS")

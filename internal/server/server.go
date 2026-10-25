@@ -22,6 +22,7 @@ type Options struct {
 	TLSCertFile string // 手动证书（可选；默认建议前置反代）
 	TLSKeyFile  string
 	Dev         bool // 开发模式：不校验 Cookie Secure（本地 http 调试）
+	TrustProxy  bool // 信任反代安全头：X-Forwarded-Proto=https 视为已 TLS（前置 Caddy/Nginx 时开启，docs/05 §3.1）
 }
 
 // Server 牧云面板。
@@ -187,6 +188,23 @@ func (s *Server) sessionCookie(value string, maxAge int) *http.Cookie {
 
 // ---------- 中间件 ----------
 
+// isSecureRequest 判断连接是否受 TLS 保护：直连 TLS，或可信反代声明
+// X-Forwarded-Proto: https（反代终结 TLS 后明文回源是标准形态，docs/05 §3.1）。
+// TrustProxy 未开启时不认反代头，防直连伪造绕过；多级代理取首项（最外层协议）。
+func (s *Server) isSecureRequest(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	if !s.opt.TrustProxy {
+		return false
+	}
+	proto := r.Header.Get("X-Forwarded-Proto")
+	if i := strings.IndexByte(proto, ','); i >= 0 {
+		proto = proto[:i]
+	}
+	return strings.EqualFold(strings.TrimSpace(proto), "https")
+}
+
 // securityHeaders 安全响应头（docs/05 §3.2）。
 func (s *Server) securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -196,7 +214,7 @@ func (s *Server) securityHeaders(next http.Handler) http.Handler {
 		h.Set("X-Frame-Options", "DENY")
 		h.Set("Content-Security-Policy",
 			"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' ws: wss:; frame-ancestors 'none'")
-		if r.TLS != nil {
+		if s.isSecureRequest(r) {
 			h.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
 		}
 		next.ServeHTTP(w, r)

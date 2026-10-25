@@ -3,6 +3,7 @@
 // 用法：
 //
 //	moon server [--data ./data] [--addr :8080] [--tls-cert c --tls-key k] [--dev]
+//	            [--trust-proxy]                        # 前置反代时信任 X-Forwarded-Proto
 //	            [--admin-password <初始密码>]   # 仅首次初始化管理员时使用
 //	moon version
 package main
@@ -16,6 +17,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/aealen/moonshepherd/internal/credenc"
@@ -45,12 +47,13 @@ func main() {
 
 	fs := flag.NewFlagSet("server", flag.ExitOnError)
 	var (
-		dataDir   = fs.String("data", "./data", "数据目录（herd.db + master.key）")
-		addr      = fs.String("addr", ":8080", "监听地址")
-		tlsCert   = fs.String("tls-cert", "", "TLS 证书文件（公网直跑；建议前置反代，见 docs/05）")
-		tlsKey    = fs.String("tls-key", "", "TLS 私钥文件")
-		dev       = fs.Bool("dev", false, "开发模式（本地 http：Cookie 不加 Secure、放宽回环限制）")
-		adminPass = fs.String("admin-password", "", "首次初始化的管理员密码（缺省则生成随机密码打印一次）")
+		dataDir    = fs.String("data", "./data", "数据目录（herd.db + master.key）")
+		addr       = fs.String("addr", ":8080", "监听地址")
+		tlsCert    = fs.String("tls-cert", "", "TLS 证书文件（公网直跑；建议前置反代，见 docs/05）")
+		tlsKey     = fs.String("tls-key", "", "TLS 私钥文件")
+		dev        = fs.Bool("dev", false, "开发模式（本地 http：Cookie 不加 Secure、放宽回环限制）")
+		trustProxy = fs.Bool("trust-proxy", envBool("HERD_TRUST_PROXY"), "信任反代安全头（X-Forwarded-Proto=https 视为已 TLS；前置 Caddy/Nginx 反代时开启，docs/05 §3.1）")
+		adminPass  = fs.String("admin-password", "", "首次初始化的管理员密码（缺省则生成随机密码打印一次）")
 	)
 	_ = fs.Parse(os.Args[1:])
 
@@ -80,6 +83,7 @@ func main() {
 	srv, err := server.New(server.Options{
 		DataDir: *dataDir, Addr: *addr,
 		TLSCertFile: *tlsCert, TLSKeyFile: *tlsKey, Dev: *dev,
+		TrustProxy: *trustProxy,
 	}, st, box)
 	if err != nil {
 		slog.Error("组装面板失败", "err", err)
@@ -90,6 +94,15 @@ func main() {
 		slog.Error("面板退出", "err", err)
 		os.Exit(1)
 	}
+}
+
+// envBool 环境变量布尔解析：1/true/yes/on（大小写不敏感）为真，缺省与其余值均为假。
+func envBool(name string) bool {
+	switch strings.ToLower(os.Getenv(name)) {
+	case "1", "true", "yes", "on":
+		return true
+	}
+	return false
 }
 
 // initAdmin 首次启动初始化管理员：--admin-password > HERD_ADMIN_PASSWORD > 随机生成打印一次。
