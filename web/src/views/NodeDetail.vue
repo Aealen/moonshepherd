@@ -84,6 +84,9 @@ const memPct = computed(() =>
   metric.value && metric.value.mem_total ? Math.round((metric.value.mem_used / metric.value.mem_total) * 100) : null)
 const diskPct = computed(() =>
   metric.value && metric.value.disk_total ? Math.round((metric.value.disk_used / metric.value.disk_total) * 100) : null)
+// 首条心跳未到时(全 0)不渲染进度条,避免 NaN%
+const hasLiveMetric = computed(() =>
+  !!metric.value && (metric.value.mem_total > 0 || metric.value.disk_total > 0 || metric.value.cpu > 0))
 
 const appColumns: DataTableColumns<AppRow> = [
   { title: '应用', key: 'app_name', minWidth: 150, render: (r) => h('span', { style: 'font-weight:600' }, r.app_name) },
@@ -186,6 +189,30 @@ function openConfig(t: ConfigTarget) {
   router.push(`/nodes/${nodeId}/configs/${t.id}`)
 }
 
+// ---------- 备注(节点显示名;注册时默认取 hostname,改名即备注) ----------
+
+const showRename = ref(false)
+const renameValue = ref('')
+
+function openRename() {
+  renameValue.value = node.value?.name ?? ''
+  showRename.value = true
+}
+
+async function saveRename() {
+  const name = renameValue.value.trim()
+  if (!name) {
+    message.error('备注不能为空')
+    return
+  }
+  try {
+    await api.patch(`/nodes/${nodeId}`, { name })
+    message.success('备注已更新')
+    showRename.value = false
+    loadNode()
+  } catch (e: any) { message.error(e.message) }
+}
+
 // ---------- 新建配置目标 ----------
 
 const showCreateCfg = ref(false)
@@ -251,6 +278,12 @@ function adoptCandidate(c: ConfCandidate) {
         {{ node.status === 'online' ? '在线' : '离线' }}
       </n-tag>
       {{ node?.name ?? nodeId }}
+      <n-button size="tiny" quaternary @click="openRename" title="编辑备注(节点显示名)">
+        <span style="font-size:13px">✎</span>
+      </n-button>
+      <span class="muted" style="font-size:12.5px; font-weight:400">
+        {{ node?.hostname }} · {{ node?.os_name }} {{ node?.os_version }} ({{ node?.os_arch }})
+      </span>
       <span class="muted" style="font-size:13px; font-weight:400">
         最后心跳 {{ fmtAgo(node?.last_seen) }}
       </span>
@@ -276,7 +309,7 @@ function adoptCandidate(c: ConfCandidate) {
           </n-descriptions>
         </n-card>
 
-        <n-space :size="16" v-if="metric">
+        <n-space :size="16" v-if="metric && hasLiveMetric">
           <n-card title="CPU" size="small" style="width:260px">
             <n-progress type="line" :percentage="Math.round(metric.cpu)" indicator-placement="inside"
               :status="metric.cpu > 85 ? 'error' : metric.cpu > 60 ? 'warning' : 'success'" />
@@ -300,7 +333,7 @@ function adoptCandidate(c: ConfCandidate) {
             <div class="muted" style="font-size:12px">load1（历史曲线 P1 提供）</div>
           </n-card>
         </n-space>
-        <n-empty v-else description="暂无心跳快照" style="margin:30px 0" />
+        <n-empty v-else description="暂无心跳快照(节点刚接入时需等约 30 秒第一条心跳)" style="margin:30px 0" />
       </n-tab-pane>
 
       <!-- 应用 -->
@@ -367,5 +400,16 @@ function adoptCandidate(c: ConfCandidate) {
     <!-- 共享详情抽屉 -->
     <AppDetailDrawer v-model:show="showAppDetail" :app="appDetailRow" />
     <CommandDetailDrawer v-model:show="showCmdDetail" :command-id="cmdDetailId" />
+
+    <!-- 备注编辑(节点显示名) -->
+    <n-modal v-model:show="showRename" preset="dialog" title="编辑备注(节点显示名)"
+      positive-text="保存" negative-text="取消" @positive-click="saveRename">
+      <div style="margin-top:8px">
+        <n-input v-model:value="renameValue" placeholder="如:阿里云-杭州/web-01" :maxlength="64" />
+        <div class="muted" style="font-size:12px; margin-top:6px">
+          仅改面板显示名,不影响认证与 Agent;主机名保持在下方信息行展示
+        </div>
+      </div>
+    </n-modal>
   </div>
 </template>
