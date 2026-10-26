@@ -168,7 +168,7 @@ func (a *Agent) register(ctx context.Context) (*credentials, error) {
 		Payload: protocol.RegisterPayload{
 			RegistrationToken: a.opt.Token, Hostname: host,
 			OS: osInfo(), AgentVersion: version.Version,
-			ProtoVersion: protocol.ProtoVersion, Capabilities: append(probe.Available(), protocol.CapPty),
+			ProtoVersion: protocol.ProtoVersion, Capabilities: append(probe.Available(), protocol.CapPty, protocol.CapDocker),
 		}}
 	if err := conn.WriteJSON(reg); err != nil {
 		return nil, err

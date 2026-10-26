@@ -35,6 +35,8 @@ func (e *E) Execute(ctx context.Context, cmdType string, payload json.RawMessage
 		return e.probe(ctx, payload, sender)
 	case protocol.CmdConfigApply:
 		return e.configApply(ctx, payload, timeoutS)
+	case protocol.CmdDockerOp:
+		return e.dockerOp(ctx, payload, timeoutS)
 	default:
 		return fail(payload, fmt.Sprintf("不支持的指令类型: %s", cmdType))
 	}
