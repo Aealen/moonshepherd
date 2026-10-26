@@ -13,6 +13,21 @@ const password = ref('')
 const loading = ref(false)
 const lockHint = ref('')
 
+// 星空点缀:固定随机种子风格的星点(每次会话一致,不用真随机避免重绘闪烁)
+const stars = Array.from({ length: 42 }, (_, i) => {
+  const size = 1 + (i * 7) % 3
+  return {
+    id: i,
+    style: {
+      left: `${(i * 23.7) % 100}%`,
+      top: `${(i * 37.3) % 100}%`,
+      width: `${size}px`,
+      height: `${size}px`,
+      animationDelay: `${(i * 0.37) % 4}s`,
+    },
+  }
+})
+
 async function login() {
   if (!username.value || !password.value) return
   loading.value = true
@@ -46,6 +61,12 @@ async function login() {
 
 <template>
   <div class="login-wrap">
+    <!-- 星空+月晕背景层(纯 CSS,牧云意象) -->
+    <div class="login-bg" aria-hidden="true">
+      <div class="moon"></div>
+      <div v-for="s in stars" :key="s.id" class="star" :style="s.style"></div>
+    </div>
+
     <div class="login-card">
       <div style="display:flex; align-items:center; gap:14px; margin-bottom:8px;">
         <img class="brand-mark" :src="logoUrl" alt="牧云" />
@@ -64,6 +85,61 @@ async function login() {
         <div v-if="lockHint" style="color:#ff8f8f; font-size:12.5px; margin-bottom:10px;">{{ lockHint }}</div>
         <n-button type="primary" block :loading="loading" :disabled="!password" @click="login">进入面板</n-button>
       </n-form>
+      <div class="login-features">
+        <span>节点总览</span><i>·</i><span>应用探测</span><i>·</i><span>Web 终端</span><i>·</i><span>配置管理</span>
+      </div>
+    </div>
+
+    <div class="login-footer">
+      <span class="mono">MoonShepherd</span> · 把散落在云端的服务器，当羊群来放牧
     </div>
   </div>
 </template>
+
+<style scoped>
+.login-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.moon {
+  position: absolute;
+  top: 9%;
+  right: 12%;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 35%, #fdf6e3 0%, #e8d9a8 45%, #c9b87e 100%);
+  box-shadow: 0 0 70px 22px rgba(240, 226, 180, 0.16), 0 0 160px 60px rgba(240, 226, 180, 0.07);
+  opacity: 0.85;
+}
+.star {
+  position: absolute;
+  border-radius: 50%;
+  background: #cfd8ea;
+  animation: twinkle 4s ease-in-out infinite;
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.8; }
+}
+.login-features {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 22px;
+  font-size: 12px;
+  color: #6f6f80;
+}
+.login-features i { font-style: normal; color: #3c3c48; }
+.login-footer {
+  position: absolute;
+  bottom: 22px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 12px;
+  color: #55555f;
+}
+</style>

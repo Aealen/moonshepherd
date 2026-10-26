@@ -54,6 +54,7 @@ body {
 
 /* 登录页 */
 .login-wrap {
+  position: relative; /* 星空/月亮装饰层的定位上下文 */
   height: 100%;
   display: flex;
   align-items: center;
