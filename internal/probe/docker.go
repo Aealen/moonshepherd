@@ -58,12 +58,15 @@ type inspectDetail struct {
 			IPAddress string `json:"IPAddress"`
 		} `json:"Networks"`
 	} `json:"NetworkSettings"`
-	Mounts []struct {
-		Source      string `json:"Source"`
-		Destination string `json:"Destination"`
-		Mode        string `json:"Mode"`
-		RW          bool   `json:"RW"`
-	} `json:"Mounts"`
+	Mounts []mountEntryRaw `json:"Mounts"`
+}
+
+// mountEntryRaw Engine API 挂载条目(与 mountEntry 字段同名)。
+type mountEntryRaw struct {
+	Source      string `json:"Source"`
+	Destination string `json:"Destination"`
+	Mode        string `json:"Mode"`
+	RW          bool   `json:"RW"`
 }
 
 // portEntry 详情端口条目。
@@ -152,6 +155,10 @@ func detectViaSock(ctx context.Context, sock string) ([]protocol.App, error) {
 						ms = append(ms, mountEntry{Source: m.Source, Dest: m.Destination, RW: m.RW, Mode: m.Mode})
 					}
 					detail["mounts"] = ms
+					// nginx/caddy 容器:配置卷挂载源即纳管候选(docs/01 §6 配置发现)
+					if cands := containerConfCandidates(c.Image, insp.Mounts); len(cands) > 0 {
+						detail["config_candidates"] = cands
+					}
 				}
 				var nets []netEntry
 				for nname, n := range insp.NetworkSettings.Networks {

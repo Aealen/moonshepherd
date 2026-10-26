@@ -41,7 +41,25 @@ func (p *NginxProbe) Detect(ctx context.Context) ([]protocol.App, error) {
 	if len(confFiles) > 0 {
 		a.Detail = map[string]any{"conf_files": confFiles, "conf_dir": "/etc/nginx"}
 	}
+	// 配置候选:nginx -T 精确清单优先,目录扫描兜底(docs/01 §6 配置发现)
+	if cands := nginxConfigCandidates(ctx, confFiles); len(cands) > 0 {
+		d, _ := a.Detail.(map[string]any)
+		if d == nil {
+			d = map[string]any{}
+		}
+		d["config_candidates"] = cands
+		a.Detail = d
+	}
 	return []protocol.App{a}, nil
+}
+
+// nginxConfigCandidates nginx -T(实际加载清单,include 全展开)优先;
+// 失败退目录扫描。
+func nginxConfigCandidates(ctx context.Context, dirScan []string) []ConfCandidate {
+	if files, ok := nginxTFiles(ctx); ok {
+		return mergeCandidates(files, dirScanCandidates("/etc/nginx", dirScan))
+	}
+	return dirScanCandidates("/etc/nginx", dirScan)
 }
 
 // ---------- caddy ----------
@@ -73,6 +91,15 @@ func (p *CaddyProbe) Detect(ctx context.Context) ([]protocol.App, error) {
 	}
 	if len(confFiles) > 0 {
 		a.Detail = map[string]any{"conf_files": confFiles, "conf_dir": "/etc/caddy"}
+	}
+	// 配置候选:主配置 + import 链(caddy adapt 验证可解析),目录扫描兜底
+	if cands := mergeCandidates(caddyConfigCandidates(ctx), dirScanCandidates("/etc/caddy", confFiles)); len(cands) > 0 {
+		d, _ := a.Detail.(map[string]any)
+		if d == nil {
+			d = map[string]any{}
+		}
+		d["config_candidates"] = cands
+		a.Detail = d
 	}
 	return []protocol.App{a}, nil
 }

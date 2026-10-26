@@ -210,6 +210,38 @@ async function createConfig() {
     router.push(`/nodes/${nodeId}/configs/${resp.target_id}`)
   } catch (e: any) { message.error(e.message) }
 }
+
+// ---------- 配置发现(nginx -T/caddy import/Docker 挂载;docs/01 §6) ----------
+
+interface ConfCandidate { path: string; source: string; main?: boolean }
+
+// 已纳管路径集合(候选列表过滤用)
+const managedPaths = computed(() => new Set(configs.value.map((c) => c.target_path)))
+
+// 从应用探测结果提取候选:nginx/caddy 应用 + docker 容器(app_name 区分来源)
+const confCandidates = computed<ConfCandidate[]>(() => {
+  const out: ConfCandidate[] = []
+  for (const a of apps.value) {
+    if (a.app_type !== 'nginx' && a.app_type !== 'caddy' && a.probe_name !== 'docker') continue
+    const cands = a.detail?.config_candidates
+    if (!Array.isArray(cands)) continue
+    for (const c of cands) {
+      if (c?.path && !out.some((x) => x.path === c.path)) {
+        out.push({ path: String(c.path), source: String(c.source ?? ''), main: !!c.main })
+      }
+    }
+  }
+  return out
+})
+
+// 一键纳管:prefill 应用类型与路径,打开既有创建弹窗(内容留空,首版从线上抓取由 Agent 侧 read-sync 完成,此处手填)
+function adoptCandidate(c: ConfCandidate) {
+  const src = c.source.toLowerCase()
+  createAppType.value = src.includes('caddy') ? 'caddy' : 'nginx'
+  createPath.value = c.path
+  createContent.value = ''
+  showCreateCfg.value = true
+}
 </script>
 
 <template>
@@ -294,6 +326,22 @@ async function createConfig() {
         <n-space style="margin-bottom:12px">
           <n-button size="small" type="primary" @click="showCreateCfg = true">＋ 新建配置目标</n-button>
         </n-space>
+
+        <!-- 发现的配置(nginx -T/caddy import/Docker 挂载;一键纳管 docs/01 §6) -->
+        <div v-if="confCandidates.length > 0" style="margin-bottom:16px">
+          <div class="muted" style="font-size:12px; margin-bottom:6px">
+            发现的配置文件（探测自动识别;纳管后即可在线编辑/校验/下发,路径可手改兜底）
+          </div>
+          <div v-for="c in confCandidates" :key="c.path"
+            style="display:flex; align-items:center; gap:10px; padding:5px 10px; border:1px solid #333340; border-radius:6px; margin-bottom:4px">
+            <n-tag size="tiny" :bordered="false" :type="c.main ? 'success' : 'default'">{{ c.main ? '主配置' : '候选' }}</n-tag>
+            <span class="mono" style="font-size:12.5px; flex:1">{{ c.path }}</span>
+            <span class="muted" style="font-size:11.5px">{{ c.source }}</span>
+            <n-button v-if="!managedPaths.has(c.path)" size="tiny" quaternary type="primary" @click="adoptCandidate(c)">纳管</n-button>
+            <span v-else class="muted" style="font-size:11.5px">已纳管</span>
+          </div>
+        </div>
+
         <n-data-table :columns="cfgColumns" :data="configs" :bordered="false" size="small" />
         <n-empty v-if="configs.length === 0" description="暂无配置目标——点击「新建配置目标」开始管理该节点的应用配置" style="margin:30px 0" />
 
