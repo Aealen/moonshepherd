@@ -45,6 +45,7 @@ type Agent struct {
 	opt  Options
 	exec *executor.E
 	tm   *terminalManager
+	lgm  *logManager
 
 	sendMu sync.Mutex
 	conn   *websocket.Conn
@@ -65,6 +66,8 @@ func New(opt Options) *Agent {
 	}
 	a := &Agent{opt: opt, exec: &executor.E{}, cfg: protocol.DefaultAgentConfig(), idem: map[string]protocol.CommandResultPayload{}}
 	a.tm = newTerminalManager()
+	a.lgm = newLogManager()
+	a.lgm.emit = a.send
 	a.tm.emit = a.send
 	return a
 }
@@ -263,6 +266,7 @@ func (a *Agent) runOnce(ctx context.Context, creds *credentials) (int, error) {
 		// 终端会话绑定连接:连接断开会话随之终止(docs/04 §7.1),
 		// 先于 conn 关闭尽力发出 close 通知(多数场景连接已死,发送静默失败属预期)
 		a.tm.CloseAll("conn_closed")
+		a.lgm.StopAll("conn_closed")
 		conn.Close()
 	}()
 

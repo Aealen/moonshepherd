@@ -1,17 +1,13 @@
 <script setup lang="ts">
-import { h, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import {
-  NCard, NDataTable, NSpace, NTag, NInput, NButton, NPagination, NModal, NForm, NFormItem,
-  useMessage, type DataTableColumns,
+  NCard, NSpace, NInput, NButton, NModal, NForm, NFormItem,
+  useMessage,
 } from 'naive-ui'
-import { api, fmtTime, type AuditLog, type Page } from '../api'
+import { api } from '../api'
 
 const message = useMessage()
 const info = ref<{ panel_version: string; node_total: number; node_online: number; command_total: number } | null>(null)
-const logs = ref<AuditLog[]>([])
-const total = ref(0)
-const page = ref(1)
-const pageSize = 20
 
 // 修改密码
 const showPwd = ref(false)
@@ -19,39 +15,9 @@ const oldPwd = ref('')
 const newPwd = ref('')
 const newPwd2 = ref('')
 
-const logColumns: DataTableColumns<AuditLog> = [
-  { title: '时间', key: 'created_at', width: 160, render: (r) => h('span', { class: 'muted' }, fmtTime(r.created_at)) },
-  { title: '用户', key: 'username', width: 100 },
-  {
-    title: '动作', key: 'action', width: 170,
-    render: (r) => h(NTag, { size: 'tiny', bordered: false,
-      type: r.action.includes('failed') ? 'error' : r.action.startsWith('auth') ? 'info' : 'default' },
-      { default: () => r.action }),
-  },
-  { title: '目标', key: 'target', width: 220, render: (r) => h('span', { class: 'mono muted', style: 'font-size:12px' }, r.target || '—') },
-  { title: 'IP', key: 'ip', width: 130, render: (r) => h('span', { class: 'mono muted' }, r.ip) },
-  {
-    title: '', key: 'op', width: 60,
-    render: (r) => r.detail && Object.keys(r.detail).length
-      ? h(NButton, { size: 'tiny', quaternary: true, type: 'primary', onClick: () => openAuditDetail(r) }, { default: () => '详情' })
-      : null,
-  },
-]
-
-// 审计详情（操作参数原始 JSON）
-const auditDetail = ref<AuditLog | null>(null)
-const showAuditDetail = ref(false)
-function openAuditDetail(r: AuditLog) {
-  auditDetail.value = r
-  showAuditDetail.value = true
-}
-
 async function load() {
   try {
     info.value = await api.get('/system/info')
-    const data = await api.get<Page<AuditLog>>(`/audit-logs?page=${page.value}&page_size=${pageSize}`)
-    logs.value = data.data ?? []
-    total.value = data.total
   } catch (e: any) { message.error(e.message) }
 }
 
@@ -77,9 +43,12 @@ onMounted(load)
 
 <template>
   <div class="page">
-    <div class="page-title">
-      ⚙️ 系统
-      <n-button size="small" style="margin-left:auto" @click="showPwd = true">修改密码</n-button>
+    <div style="display:flex; align-items:flex-start; justify-content:space-between">
+      <div>
+        <div class="page-title">系统</div>
+        <div class="page-sub">面板信息 · 账户安全 · <span style="color:#6ee7d8">审计已独立成菜单</span></div>
+      </div>
+      <n-button size="small" @click="showPwd = true">修改密码</n-button>
     </div>
 
     <n-space :size="16" style="margin-bottom:18px">
@@ -98,11 +67,6 @@ onMounted(load)
       </n-card>
     </n-space>
 
-    <div style="font-weight:600; margin-bottom:10px">操作审计</div>
-    <n-data-table :columns="logColumns" :data="logs" :bordered="false" size="small" />
-    <div style="display:flex; justify-content:flex-end; margin-top:14px" v-if="total > pageSize">
-      <n-pagination v-model:page="page" :page-size="pageSize" :item-count="total" @update:page="load" />
-    </div>
 
     <n-modal v-model:show="showPwd" preset="dialog" title="修改密码" positive-text="修改" negative-text="取消" @positive-click="changePassword">
       <n-form label-placement="top" style="margin-top:10px">
@@ -113,12 +77,5 @@ onMounted(load)
       <div class="muted" style="font-size:12px">修改成功后其他设备的会话将全部失效</div>
     </n-modal>
 
-    <!-- 审计详情：操作参数原始 JSON -->
-    <n-modal v-model:show="showAuditDetail" preset="card" :title="`审计详情 · ${auditDetail?.action ?? ''}`" style="width:560px">
-      <pre class="term">{{ JSON.stringify(auditDetail?.detail ?? {}, null, 2) }}</pre>
-      <div class="muted" style="font-size:12px; margin-top:8px">
-        {{ auditDetail?.username }} @ {{ auditDetail?.ip }} · {{ fmtTime(auditDetail?.created_at) }}
-      </div>
-    </n-modal>
   </div>
 </template>

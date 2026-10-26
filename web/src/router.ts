@@ -11,6 +11,7 @@ export const router = createRouter({
     { path: '/commands', component: () => import('./views/Commands.vue') },
     { path: '/nodes/:id/configs/:targetId', component: () => import('./views/ConfigVersion.vue') },
     { path: '/system', component: () => import('./views/System.vue') },
+    { path: '/audit', component: () => import('./views/Audit.vue') },
   ],
 })
 

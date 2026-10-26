@@ -5,6 +5,7 @@
 import { ref } from 'vue'
 import { NButton, NDropdown, NModal, useMessage } from 'naive-ui'
 import { api } from '../api'
+import LogStreamModal from './LogStreamModal.vue'
 
 const props = defineProps<{
   nodeID: string
@@ -17,9 +18,10 @@ const message = useMessage()
 const sending = ref(false)
 const showConfirm = ref(false)
 const confirmOp = ref<{ op: string; label: string } | null>(null)
+const showLog = ref(false)
 
 const opLabel: Record<string, string> = {
-  start: '启动', stop: '停止', restart: '重启', logs: '日志', pull: '拉取镜像',
+  start: '启动', stop: '停止', restart: '重启', pull: '拉取镜像',
 }
 
 function options() {
@@ -29,12 +31,16 @@ function options() {
     opts.push({ label: '重启', key: 'restart' })
     opts.push({ label: '停止', key: 'stop' })
   }
-  opts.push({ label: '日志(尾部 200 行)', key: 'logs' })
+  opts.push({ label: '日志', key: 'logs' })
   opts.push({ label: '拉取镜像(不重建容器)', key: 'pull' })
   return opts
 }
 
 function onMenuSelect(key: string) {
+  if (key === 'logs') {
+    showLog.value = true
+    return
+  }
   confirmOp.value = { op: key, label: opLabel[key] ?? key }
   showConfirm.value = true
 }
@@ -47,7 +53,7 @@ async function execute() {
     const data = await api.post<{ command_id: string }>(`/nodes/${props.nodeID}/commands`, {
       type: 'docker.op',
       timeout_s: conf.op === 'pull' ? 300 : 60,
-      payload: { op: conf.op, container: props.appName, tail_lines: conf.op === 'logs' ? 200 : 0 },
+      payload: { op: conf.op, container: props.appName },
     })
     message.success(`指令已下发(${data.command_id.slice(0, 10)}…),结果见「指令」列表`)
   } catch (e: any) {
@@ -77,4 +83,7 @@ async function execute() {
       操作全程审计留痕。
     </p>
   </n-modal>
+
+  <!-- 容器日志实时弹窗(tail -f 流式,docs/04 §9) -->
+  <LogStreamModal v-model:show="showLog" :nodeID="nodeID" :container="appName" />
 </template>
