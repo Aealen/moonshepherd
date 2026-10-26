@@ -50,7 +50,7 @@ async function login() {
       <div style="display:flex; align-items:center; gap:14px; margin-bottom:8px;">
         <img class="brand-mark" :src="logoUrl" alt="牧云" />
         <div>
-          <div style="font-size:22px; font-weight:700;">牧云 Herd</div>
+          <div style="font-size:22px; font-weight:700;">牧云 MoonShepherd</div>
           <div class="muted" style="font-size:12px;">把散落在云端的服务器，当羊群来放牧</div>
         </div>
       </div>

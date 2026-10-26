@@ -108,7 +108,7 @@ if (!isLogin.value) {
             <div class="brand">
               <img class="brand-mark" :src="logoUrl" alt="牧云" />
               <transition name="fade">
-                <span v-if="!collapsed" class="brand-name">牧云 Herd</span>
+                <span v-if="!collapsed" class="brand-name">牧云 MoonShepherd</span>
               </transition>
             </div>
             <n-menu :collapsed="collapsed" :collapsed-width="64" :options="menuOptions" :value="activeMenu" />
