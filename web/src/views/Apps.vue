@@ -6,6 +6,7 @@ import {
 } from 'naive-ui'
 import { api, fmtTime, type AppRow, type Node, type Page } from '../api'
 import AppDetailDrawer from '../components/AppDetailDrawer.vue'
+import DockerOps from '../components/DockerOps.vue'
 
 const router = useRouter()
 const message = useMessage()
@@ -37,8 +38,12 @@ async function loadNodes() {
   try {
     const data = await api.get<Page<Node>>(`/nodes?page_size=100`)
     nodeOptions.value = (data.data ?? []).map((n) => ({ label: n.name, value: n.id }))
+    nodeCaps.value = Object.fromEntries((data.data ?? []).map((n) => [n.id, n.capabilities ?? []]))
   } catch { /* 忽略 */ }
 }
+
+// node_id → capabilities(操作列按 docker 能力显隐)
+const nodeCaps = ref<Record<string, string[]>>({})
 
 const columns: DataTableColumns<AppRow> = [
   {
@@ -68,8 +73,16 @@ const columns: DataTableColumns<AppRow> = [
   },
   { title: '探测时间', key: 'detected_at', width: 150, render: (r) => h('span', { class: 'muted' }, fmtTime(r.detected_at)) },
   {
-    title: '', key: 'op', width: 70,
-    render: (r) => h(NButton, { size: 'tiny', quaternary: true, type: 'primary', onClick: () => openDetail(r) }, { default: () => '详情' }),
+    title: '', key: 'op', width: 150,
+    render: (r) => h('div', { style: 'display:flex; gap:2px; align-items:center' }, [
+      r.probe_name === 'docker' && r.app_name
+        ? h(DockerOps, {
+            nodeID: r.node_id, appName: r.app_name, status: r.status,
+            hasDockerCap: (nodeCaps.value[r.node_id] ?? []).includes('docker'),
+          })
+        : null,
+      h(NButton, { size: 'tiny', quaternary: true, type: 'primary', onClick: () => openDetail(r) }, { default: () => '详情' }),
+    ]),
   },
 ]
 

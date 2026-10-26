@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -39,8 +40,8 @@ func (s *Server) handleGetNode(w http.ResponseWriter, r *http.Request) {
 	}
 	metric, _, _ := s.st.LatestMetric(r.Context(), node.ID)
 	writeJSON(w, http.StatusOK, map[string]any{
-		"node":         node,
-		"online":       s.hub.online(node.ID),
+		"node":          node,
+		"online":        s.hub.online(node.ID),
 		"latest_metric": metric,
 	})
 }
@@ -212,9 +213,9 @@ func (s *Server) handleCreateCommand(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	switch req.Type {
-	case protocol.CmdExec, protocol.CmdProbe, protocol.CmdConfigApply:
+	case protocol.CmdExec, protocol.CmdProbe, protocol.CmdConfigApply, protocol.CmdDockerOp:
 	default:
-		writeErr(w, http.StatusBadRequest, "validation_failed", "不支持的指令类型（P0 仅 exec/probe/config.apply）")
+		writeErr(w, http.StatusBadRequest, "validation_failed", "不支持的指令类型")
 		return
 	}
 	if req.TimeoutS > 600 {
@@ -225,6 +226,29 @@ func (s *Server) handleCreateCommand(w http.ResponseWriter, r *http.Request) {
 		var p protocol.ExecPayload
 		if json.Unmarshal(req.Payload, &p) != nil || p.Cmd == "" {
 			writeErr(w, http.StatusBadRequest, "validation_failed", "exec 指令需要 payload.cmd")
+			return
+		}
+	}
+	if req.Type == protocol.CmdDockerOp {
+		var p protocol.DockerOpPayload
+		if err := json.Unmarshal(req.Payload, &p); err != nil {
+			writeErr(w, http.StatusBadRequest, "validation_failed", "docker.op payload 非法")
+			return
+		}
+		allowed := false
+		for _, op := range protocol.DockerOpsAllowed {
+			if p.Op == op {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			writeErr(w, http.StatusBadRequest, "validation_failed",
+				"op 必须是 "+strings.Join(protocol.DockerOpsAllowed, "/"))
+			return
+		}
+		if p.Container == "" && !(p.Op == protocol.DockerOpPull && p.Image != "") {
+			writeErr(w, http.StatusBadRequest, "validation_failed", "缺少 container")
 			return
 		}
 	}
@@ -334,10 +358,10 @@ type httpError struct {
 
 func (e *httpError) Error() string { return e.msg }
 
-func errNotFound(msg string) error    { return &httpError{404, "not_found", msg} }
-func errBadRequest(msg string) error  { return &httpError{400, "validation_failed", msg} }
-func errConflict(msg string) error    { return &httpError{409, "conflict", msg} }
-func errInternal(err error) error     { return &httpError{500, "internal", err.Error()} }
+func errNotFound(msg string) error   { return &httpError{404, "not_found", msg} }
+func errBadRequest(msg string) error { return &httpError{400, "validation_failed", msg} }
+func errConflict(msg string) error   { return &httpError{409, "conflict", msg} }
+func errInternal(err error) error    { return &httpError{500, "internal", err.Error()} }
 
 func writeCmdErr(w http.ResponseWriter, err error) {
 	if he, ok := err.(*httpError); ok {

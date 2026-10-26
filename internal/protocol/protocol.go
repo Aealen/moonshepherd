@@ -41,9 +41,10 @@ const (
 
 // Agent capabilities（register.capabilities；面板按能力开放功能）。
 const (
-	CapProbe = "probe" // 应用探测（M3）
-	CapExec  = "exec"  // 远程命令（M2）
-	CapPty   = "pty"   // 交互式终端（Web 终端）
+	CapProbe  = "probe"  // 应用探测（M3）
+	CapExec   = "exec"   // 远程命令（M2）
+	CapPty    = "pty"    // 交互式终端（Web 终端）
+	CapDocker = "docker" // docker.op 容器生命周期白名单操作
 )
 
 // 指令类型（docs/04 §5.3）。
@@ -51,7 +52,7 @@ const (
 	CmdExec        = "exec"
 	CmdProbe       = "probe"
 	CmdConfigApply = "config.apply"
-	CmdDockerOp    = "docker.op"    // P1
+	CmdDockerOp    = "docker.op"    // 容器生命周期白名单操作(P1 已实现)
 	CmdAgentUpdate = "agent.update" // P1
 )
 
@@ -199,6 +200,27 @@ type CommandPayload struct {
 type ExecPayload struct {
 	Cmd string `json:"cmd"`
 }
+
+// DockerOpPayload docker.op 白名单操作(docs/01 §3.4:枚举操作,非任意命令)。
+// Container 为容器名或 ID(探测器上报的 name/id 均可)。
+type DockerOpPayload struct {
+	Op        string `json:"op"`                  // start/stop/restart/logs/pull
+	Container string `json:"container,omitempty"` // logs/pull 外必填
+	TailLines int    `json:"tail_lines,omitempty"`
+	Image     string `json:"image,omitempty"` // pull 用:缺省取容器当前镜像
+}
+
+// docker.op 白名单操作集(Agent 侧硬校验,面板侧复用同一份)。
+const (
+	DockerOpStart   = "start"
+	DockerOpStop    = "stop"
+	DockerOpRestart = "restart"
+	DockerOpLogs    = "logs"
+	DockerOpPull    = "pull"
+)
+
+// DockerOpsAllowed 白名单(顺序即面板操作列展示序)。
+var DockerOpsAllowed = []string{DockerOpStart, DockerOpStop, DockerOpRestart, DockerOpLogs, DockerOpPull}
 
 type ProbePayload struct {
 	ProbeNames []string `json:"probe_names"`

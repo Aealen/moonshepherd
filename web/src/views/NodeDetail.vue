@@ -9,6 +9,7 @@ import { api, fmtAgo, fmtTime, type AppRow, type Command, type ConfigTarget, typ
 import { onEvent } from '../api/ws'
 import AppDetailDrawer from '../components/AppDetailDrawer.vue'
 import CommandDetailDrawer from '../components/CommandDetailDrawer.vue'
+import DockerOps from '../components/DockerOps.vue'
 import NodeTerminal from '../components/NodeTerminal.vue'
 
 const route = useRoute()
@@ -105,8 +106,16 @@ const appColumns: DataTableColumns<AppRow> = [
   },
   { title: '探测时间', key: 'detected_at', width: 150, render: (r) => fmtTime(r.detected_at) },
   {
-    title: '', key: 'op', width: 70,
-    render: (r) => h(NButton, { size: 'tiny', quaternary: true, type: 'primary', onClick: () => openAppDetail(r) }, { default: () => '详情' }),
+    title: '', key: 'op', width: 150,
+    render: (r) => h('div', { style: 'display:flex; gap:2px; align-items:center' }, [
+      r.probe_name === 'docker' && r.app_name
+        ? h(DockerOps, {
+            nodeID: nodeId, appName: r.app_name, status: r.status,
+            hasDockerCap: node.value?.capabilities?.includes('docker') ?? false,
+          })
+        : null,
+      h(NButton, { size: 'tiny', quaternary: true, type: 'primary', onClick: () => openAppDetail(r) }, { default: () => '详情' }),
+    ]),
   },
 ]
 
