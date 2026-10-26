@@ -131,7 +131,8 @@ onMounted(() => {
 
 <template>
   <div class="page">
-    <div class="page-title">📦 应用中心 <span class="muted" style="font-size:13px; font-weight:400">跨节点 · 谁装了什么</span></div>
+    <div class="page-title">应用中心</div>
+    <div class="page-sub">跨节点 · 谁装了什么</div>
 
     <n-space style="margin-bottom:14px" align="center">
       <n-select v-model:value="nodeFilter" size="small" style="width:150px" clearable filterable placeholder="节点"

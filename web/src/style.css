@@ -1,79 +1,230 @@
-/* 牧云全局样式：暗色运维面板审美 */
+/* ============================================================
+   牧云 MoonShepherd 设计系统 —— 「暗夜牧场」
+   深空底 · 月光青 · 玻璃质感 · 微光交互
+   ============================================================ */
+
+:root {
+  /* 色板:深空层叠 */
+  --bg-0: #0a0b10;        /* 最深:页面底 */
+  --bg-1: #10121a;        /* 面板/侧栏 */
+  --bg-2: #151823;        /* 卡片 */
+  --bg-3: #1b1f2e;        /* 卡片悬浮/输入框 */
+  --glass: rgba(21, 24, 35, 0.72);
+  --line: #232838;        /* 分隔线 */
+  --line-strong: #2e3550;
+
+  /* 月光青主色 + 辅助 */
+  --moon: #6ee7d8;
+  --moon-strong: #99f0e4;
+  --moon-dim: rgba(110, 231, 216, 0.12);
+  --accent: #7ab8ff;      /* 信息蓝 */
+  --gold: #f2c97d;        /* 警示金 */
+  --rose: #ff8f9a;        /* 危险玫瑰 */
+  --text-1: #eef1f8;      /* 主文本 */
+  --text-2: #9aa3b8;      /* 次文本 */
+  --text-3: #5d6579;      /* 弱文本 */
+
+  --radius: 10px;
+  --radius-sm: 7px;
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.03);
+  --glow-moon: 0 0 18px rgba(110, 231, 216, 0.25);
+}
+
 html, body, #app {
   height: 100%;
   margin: 0;
 }
 
 body {
-  background: #101014;
-  color: #e8eaf0;
+  background: var(--bg-0);
+  color: var(--text-1);
   font-family: "Inter", "HarmonyOS Sans SC", "Microsoft YaHei", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 /* 终端风输出块 */
 .term {
-  background: #0b0b0f;
-  border: 1px solid #2a2a33;
-  border-radius: 6px;
-  padding: 12px;
+  background: #08090d;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
   font-family: "JetBrains Mono", "Cascadia Code", Consolas, monospace;
   font-size: 12.5px;
-  line-height: 1.6;
+  line-height: 1.65;
   white-space: pre-wrap;
   word-break: break-all;
   max-height: 480px;
   overflow: auto;
   margin: 0;
 }
+.term .out-err { color: var(--rose); }
 
-.term .out-err { color: #ff8f8f; }
-
-/* 滚动条 */
+/* 滚动条:细而雅 */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: #2e2e38; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #3d3d4a; }
+::-webkit-scrollbar-thumb { background: #2b3040; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #3a4158; }
 ::-webkit-scrollbar-track { background: transparent; }
 
-/* 页面通用 */
+/* ---------- 页面骨架 ---------- */
 .page {
-  padding: 20px 24px;
-  max-width: 1280px;
+  padding: 26px 32px 40px;
+  max-width: 1320px;
   margin: 0 auto;
 }
 .page-title {
-  font-size: 20px;
-  font-weight: 600;
-  margin: 0 0 16px;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  margin: 0 0 6px;
   display: flex;
   align-items: center;
   gap: 10px;
 }
-.muted { color: #8b8b98; }
-.mono { font-family: Consolas, "JetBrains Mono", monospace; }
+.page-sub {
+  color: var(--text-3);
+  font-size: 13px;
+  margin: 0 0 22px;
+}
 
-/* 登录页 */
+.muted { color: var(--text-2); }
+.mono { font-family: "JetBrains Mono", Consolas, monospace; }
+
+/* ---------- 通用卡片质感(供 n-card 深度覆写与自绘使用) ---------- */
+.glass-card {
+  background: var(--glass);
+  backdrop-filter: blur(14px);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  border: 1px solid rgba(255, 255, 255, 0.045);
+}
+
+/* 数字等宽微徽章 */
+.metric-pill {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 11.5px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--moon-dim);
+  color: var(--moon-strong);
+}
+
+/* 发光主按钮的 hover 辉光辅助 */
+.glow-hover { transition: box-shadow 0.2s ease, transform 0.15s ease; }
+.glow-hover:hover { box-shadow: var(--glow-moon); }
+
+/* ---------- 登录页(星空之夜) ---------- */
 .login-wrap {
-  position: relative; /* 星空/月亮装饰层的定位上下文 */
+  position: relative;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(1200px 500px at 70% -10%, rgba(91, 157, 255, 0.12), transparent),
-    radial-gradient(800px 400px at 10% 110%, rgba(80, 140, 255, 0.08), transparent),
-    #101014;
+    radial-gradient(1200px 500px at 70% -10%, rgba(110, 231, 216, 0.10), transparent),
+    radial-gradient(900px 500px at 8% 108%, rgba(122, 184, 255, 0.08), transparent),
+    var(--bg-0);
 }
 .login-card {
-  width: 380px;
-  padding: 40px 36px 32px;
-  border-radius: 14px;
-  background: rgba(24, 24, 30, 0.9);
-  border: 1px solid #2a2a33;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  width: 384px;
+  padding: 42px 38px 30px;
+  border-radius: 16px;
+  background: var(--glass);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  position: relative;
+  z-index: 1;
+}
+.brand-mark { font-size: 40px; line-height: 1; }
+.login-features {
+  display: flex; justify-content: center; gap: 8px;
+  margin-top: 22px; font-size: 12px; color: var(--text-3);
+}
+.login-features i { font-style: normal; color: #343a4c; }
+.login-footer {
+  position: absolute; bottom: 22px; left: 0; right: 0;
+  text-align: center; font-size: 12px; color: #4a5062;
+  z-index: 1;
+}
+.moon {
+  position: absolute; top: 9%; right: 12%;
+  width: 130px; height: 130px; border-radius: 50%;
+  background: radial-gradient(circle at 38% 35%, #fdf6e3 0%, #e8d9a8 45%, #c9b87e 100%);
+  box-shadow: 0 0 70px 22px rgba(240, 226, 180, 0.16), 0 0 160px 60px rgba(240, 226, 180, 0.07);
+  opacity: 0.85;
+}
+.star {
+  position: absolute; border-radius: 50%; background: #cfd8ea;
+  animation: twinkle 4s ease-in-out infinite;
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.8; }
 }
 
-.brand-mark {
-  font-size: 40px;
-  line-height: 1;
+/* ---------- 表格质感(n-data-table 深度统一) ---------- */
+.n-data-table .n-data-table-td {
+  background: transparent !important;
+  border-color: var(--line) !important;
 }
+.n-data-table .n-data-table-tr:hover .n-data-table-td {
+  background: rgba(110, 231, 216, 0.04) !important;
+}
+.n-data-table .n-data-table-th {
+  background: rgba(255, 255, 255, 0.025) !important;
+  color: var(--text-2) !important;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  height: 42px;
+  border-color: var(--line) !important;
+  border-bottom: 1px solid var(--line-strong) !important;
+}
+/* 表格圆角:外壳统一随全局 radius,首末列内角修圆 */
+.n-data-table-wrapper {
+  border-radius: var(--radius) !important;
+  border: 1px solid rgba(255, 255, 255, 0.045) !important;
+  overflow: hidden;
+}
+.n-data-table .n-data-table-th:first-child { border-top-left-radius: var(--radius) !important; }
+.n-data-table .n-data-table-th:last-child { border-top-right-radius: var(--radius) !important; }
+.n-data-table .n-data-table-td:first-child { border-bottom-left-radius: var(--radius) !important; }
+.n-data-table .n-data-table-td:last-child { border-bottom-right-radius: var(--radius) !important; }
+/* 单行表格(空态)也要圆角 */
+.n-data-table.n-data-table--single-row .n-data-table-td {
+  border-bottom: none !important;
+}
+
+/* n-card 统一玻璃质感 */
+.n-card {
+  background: var(--bg-2) !important;
+  border-radius: var(--radius) !important;
+  border: 1px solid rgba(255, 255, 255, 0.045);
+  box-shadow: var(--shadow-card);
+}
+.n-card > .n-card-header { padding-top: 16px; }
+.n-card > .n-card__content { padding-bottom: 16px; }
+
+/* 布局层次 */
+.n-layout-sider { background: var(--bg-1) !important; }
+.n-layout-header { background: rgba(16, 18, 26, 0.8) !important; backdrop-filter: blur(10px); }
+.n-layout { background: var(--bg-0) !important; }
+.n-layout-content { background: var(--bg-0) !important; }
+
+/* 抽屉/弹窗边框精修 */
+.n-drawer, .n-modal, .n-card.n-dialog {
+  border: 1px solid var(--line-strong) !important;
+}
+
+/* ---------- 终端页(xterm 容器) ---------- */
+.term-box {
+  background: #08090d;
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  min-height: 420px;
+  height: calc(100vh - 320px);
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--line);
+}
+.term-box.off { opacity: 0.55; }

@@ -110,8 +110,8 @@ async function login() {
   width: 130px;
   height: 130px;
   border-radius: 50%;
-  background: radial-gradient(circle at 38% 35%, #fdf6e3 0%, #e8d9a8 45%, #c9b87e 100%);
-  box-shadow: 0 0 70px 22px rgba(240, 226, 180, 0.16), 0 0 160px 60px rgba(240, 226, 180, 0.07);
+  background: radial-gradient(circle at 38% 35%, #eef7f2 0%, #c9e4d8 45%, #8fb8ab 100%);
+  box-shadow: 0 0 70px 22px rgba(110, 231, 216, 0.14), 0 0 160px 60px rgba(110, 231, 216, 0.06);
   opacity: 0.85;
 }
 .star {

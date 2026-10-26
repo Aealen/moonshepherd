@@ -20,9 +20,9 @@ const statusFilter = ref<string | null>(null)
 const query = ref('')
 
 const statusTag = (s: string, enabled: boolean) => {
-  if (!enabled) return h(NTag, { type: 'default', size: 'small', round: true, bordered: false }, { default: () => '已禁用' })
-  if (s === 'online') return h(NTag, { type: 'success', size: 'small', round: true, bordered: false }, { default: () => '在线' })
-  return h(NTag, { type: 'warning', size: 'small', round: true, bordered: false }, { default: () => '离线' })
+  if (!enabled) return h('span', { class: 'node-state disabled' }, [h('i'), '已禁用'])
+  if (s === 'online') return h('span', { class: 'node-state online' }, [h('i', { class: 'pulse' }), '在线'])
+  return h('span', { class: 'node-state offline' }, [h('i'), '离线'])
 }
 
 const columns: DataTableColumns<Node> = [
@@ -176,9 +176,12 @@ onUnmounted(() => off?.())
 
 <template>
   <div class="page">
-    <div class="page-title">
-      🖥️ 节点
-      <n-button type="primary" size="small" style="margin-left:auto" @click="openTokenModal">＋ 纳管新节点</n-button>
+    <div style="display:flex; align-items:flex-start; justify-content:space-between">
+      <div>
+        <div class="page-title">节点</div>
+        <div class="page-sub">牧群一览 · 状态心跳实时刷新</div>
+      </div>
+      <n-button type="primary" size="small" class="glow-hover" @click="openTokenModal">＋ 纳管新节点</n-button>
     </div>
 
     <n-space style="margin-bottom:14px" align="center">
@@ -214,7 +217,7 @@ onUnmounted(() => off?.())
       </n-form>
 
       <div v-if="freshToken" style="margin-top:18px">
-        <div style="font-weight:600; margin-bottom:8px">✅ 一次性注册 Token（仅显示这一次，24h 内有效）</div>
+        <div style="font-weight:600; margin-bottom:8px">一次性注册 Token（仅显示这一次，24h 内有效）</div>
         <div class="term" style="margin-bottom:10px">{{ freshToken }}</div>
         <div style="font-weight:600; margin-bottom:8px">在目标机器执行（二进制形态）：</div>
         <div class="term" style="margin-bottom:10px">{{ installCmd() }}</div>
@@ -236,3 +239,32 @@ onUnmounted(() => off?.())
     </n-modal>
   </div>
 </template>
+
+<style scoped>
+/* 节点状态:圆点呼吸灯胶囊(替代 tag) */
+.node-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: "JetBrains Mono", Consolas, monospace;
+}
+.node-state i {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #5d6579;
+}
+.node-state.online { color: #99f0e4; }
+.node-state.online i {
+  background: #6ee7d8;
+  box-shadow: 0 0 8px rgba(110, 231, 216, 0.7);
+}
+.node-state.offline { color: #9aa3b8; }
+.node-state.offline i { background: #8a7a4e; }
+.node-state.disabled { color: #5d6579; }
+.pulse { animation: node-breathe 2.4s ease-in-out infinite; }
+@keyframes node-breathe {
+  0%, 100% { box-shadow: 0 0 3px rgba(110, 231, 216, 0.5); }
+  50% { box-shadow: 0 0 11px rgba(110, 231, 216, 0.95); }
+}
+</style>

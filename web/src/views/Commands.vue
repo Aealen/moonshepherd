@@ -146,7 +146,8 @@ onUnmounted(() => off?.())
 
 <template>
   <div class="page">
-    <div class="page-title">⌘ 指令中心</div>
+    <div class="page-title">指令中心</div>
+    <div class="page-sub">远程命令 · 全程审计留痕</div>
 
     <n-card title="发起远程命令" size="small" :bordered="false" style="margin-bottom:18px">
       <n-space align="center">
