@@ -1,10 +1,11 @@
 <script setup lang="ts">
 // 应用详情抽屉（共享组件）：应用中心 + 节点详情·应用 tab 复用。
-import { computed, h } from 'vue'
+import { computed, h, ref } from 'vue'
 import {
   NDrawer, NDrawerContent, NDescriptions, NDescriptionsItem, NDataTable, NTag,
 } from 'naive-ui'
 import { fmtTime, type AppRow } from '../api'
+import FileViewerModal from './FileViewerModal.vue'
 
 const props = defineProps<{ show: boolean; app: AppRow | null }>()
 const emit = defineEmits<{ (e: 'update:show', v: boolean): void }>()
@@ -71,6 +72,9 @@ const confCandidates = computed<ConfCandidate[]>(() => {
   }
   return []
 })
+
+const showFile = ref('') // 待查看的文件路径(空=关)
+const showFileAsBool = computed({ get: () => showFile.value !== '', set: (v: boolean) => { if (!v) showFile.value = '' } })
 
 const sourceLabel: Record<string, string> = {
   'nginx -T': '运行时加载(最准)',
@@ -142,7 +146,7 @@ const envCols = [
           <n-tag size="tiny" :bordered="false" :type="c.main ? 'success' : 'default'" style="flex-shrink:0">
             {{ c.main ? '主配置' : '候选' }}
           </n-tag>
-          <span class="mono" style="font-size:12.5px; flex:1; word-break:break-all">{{ c.path }}</span>
+          <span class="mono conf-path" style="font-size:12.5px; flex:1; word-break:break-all" title="点击查看文件内容(只读)" @click="showFile = c.path">{{ c.path }}</span>
           <span class="muted" style="font-size:11.5px; flex-shrink:0">{{ srcLabel(c.source) }}</span>
         </div>
         <div class="muted" style="font-size:11.5px; margin:6px 2px 18px">
@@ -176,9 +180,13 @@ const envCols = [
       </template>
     </n-drawer-content>
   </n-drawer>
+  <FileViewerModal v-model:show="showFileAsBool" :node-i-d="app?.node_id ?? ''" :path="showFile" />
 </template>
 
 <style scoped>
+.conf-path { cursor: pointer; }
+.conf-path:hover { color: #99f0e4; text-decoration: underline; }
+
 /* 中间件配置候选条目:主配置带青色左边条 */
 .conf-item {
   display: flex;

@@ -41,6 +41,9 @@ const (
 	TypeLogStreamStart = "log.stream.start" // P→A 开始跟随容器日志
 	TypeLogStreamChunk = "log.stream.chunk" // A→P 日志增量(base64)
 	TypeLogStreamStop  = "log.stream.stop"  // 双向 停止跟随
+	// 远端文件只读查看(docs/04 §10:白名单文本配置,一问一答)
+	TypeFileRead  = "file.read"  // P→A 读文件
+	TypeFileReadAck = "file.read.ack" // A→P 内容/错误
 )
 
 // Agent capabilities（register.capabilities；面板按能力开放功能）。
@@ -325,6 +328,28 @@ const (
 	MaxLogStreamsPerAgent = 5          // 并发日志跟随上限
 	LogStreamTailMax      = 1000       // tail 上限
 	LogStreamTimeoutMin   = 15 * 60    // 跟随最长时长(分钟),防遗忘泄漏
+)
+
+// ---------- 远端文件只读查看(docs/04 §10) ----------
+
+// FileReadPayload 面板请求读取文件内容(只读,白名单校验在 Agent)。
+type FileReadPayload struct {
+	RequestID string `json:"request_id"`
+	Path      string `json:"path"`
+}
+
+// FileReadAckPayload 文件内容(文本原样;二进制/超限/越权回 error)。
+type FileReadAckPayload struct {
+	RequestID string `json:"request_id"`
+	Content   string `json:"content,omitempty"`
+	Size      int64  `json:"size,omitempty"`     // 文件原始大小(字节)
+	Truncated bool   `json:"truncated,omitempty"` // 超 MaxFileReadBytes 截断
+	Error     string `json:"error,omitempty"`
+}
+
+// 文件查看约束(Agent 侧硬限制;docs/05 安全:只读文本配置)。
+const (
+	MaxFileReadBytes = 512 << 10 // 512KB,超出截断
 )
 
 // ---------- 错误（docs/04 §5.5/§5.6） ----------

@@ -150,6 +150,25 @@ export function mockPlugin() {
 
         if (url === '/api/v1/audit-logs') return send(page(auditLogs, Number(q.get('page') ?? 1), Number(q.get('page_size') ?? 20)))
         if (url === '/api/v1/system/info') return send(json({ panel_version: 'main-d70fa47', go_version: 'go1.27', os: 'windows', arch: 'amd64', data_dir: './data-dev', node_count: nodes.length, online_count: 2, app_count: apps.length, uptime_s: now() - start }))
+        // 文件只读查看:返回仿真配置内容(真实环境经 WSS 转推,此处直接同步给全文)
+        const mFileRead = url.match(/^\/api\/v1\/nodes\/(n_\w+)\/file\/read$/)
+        if (mFileRead && req.method === 'POST') {
+          let body = ''
+          req.on('data', (c) => (body += c))
+          req.on('end', () => {
+            const p = JSON.parse(body || '{}')
+            const sample = p.path?.endsWith('.conf')
+              ? 'user  nginx;\nworker_processes  auto;\n\nevents {\n    worker_connections  1024;\n}\n\nhttp {\n    include       /etc/nginx/mime.types;\n    default_type  application/octet-stream;\n\n    # gzip\n    gzip  on;\n    gzip_vary on;\n\n    server {\n        listen       80;\n        server_name  demo.aowu.tech;\n\n        location / {\n            proxy_pass         http://127.0.0.1:3000;\n            proxy_set_header   Host $host;\n            proxy_set_header   X-Real-IP $remote_addr;\n        }\n    }\n}\n'
+              : '# Caddyfile\ndemo.aowu.tech {\n    reverse_proxy 127.0.0.1:3000\n    encode gzip\n}\n'
+            send(json({
+              request_id: 'fr_mock' + Date.now(),
+              content: sample,
+              size: sample.length,
+              truncated: false,
+            }))
+          })
+          return
+        }
         // 日志流:开流返回 ID(演示模式:弹窗显示"等待日志…";真实环境走 WSS 推送)
         const mLogOpen = url.match(/^\/api\/v1\/nodes\/(n_\w+)\/logstream$/)
         if (mLogOpen && req.method === 'POST') {
