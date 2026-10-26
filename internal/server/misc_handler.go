@@ -1,12 +1,15 @@
 package server
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/websocket"
 
+	"github.com/aealen/moonshepherd/internal/protocol"
 	"github.com/aealen/moonshepherd/internal/store"
 	"github.com/aealen/moonshepherd/version"
 )
@@ -62,6 +65,16 @@ type eventSub struct {
 	Topics  []string `json:"topics"`   // 空 = 全部
 }
 
+// wsClientMsg 浏览器经 events WSS 上行的客户端消息(docs/04 §8:
+// 终端输入/窗口尺寸;其余上行消息保留探活语义,未知类型忽略)。
+type wsClientMsg struct {
+	Type      string `json:"type"` // session.input / session.resize
+	SessionID string `json:"session_id,omitempty"`
+	DataB64   string `json:"data_b64,omitempty"`
+	Rows      int    `json:"rows,omitempty"`
+	Cols      int    `json:"cols,omitempty"`
+}
+
 // handleEvents GET /api/v1/events：订阅模型 + 按 sub 过滤推送。
 // WS 只做增量提示，页面数据以 REST 为源（docs/06 §3）。
 func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
@@ -103,14 +116,27 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	ch := s.hub.subscribe()
 	defer s.hub.unsubscribe(ch)
 
-	// 读循环只用来探活/关闭检测
+	// 读循环:探活/关闭检测 + 终端上行消息(input/resize 会话归属校验后转发)
+	sess := sessionFrom(r)
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		conn.SetReadLimit(512)
+		conn.SetReadLimit(protocol.MaxPayloadBytes + 4096)
 		for {
-			if _, _, err := conn.ReadMessage(); err != nil {
+			_, data, err := conn.ReadMessage()
+			if err != nil {
 				return
+			}
+			var msg wsClientMsg
+			if json.Unmarshal(data, &msg) != nil {
+				continue
+			}
+			switch msg.Type {
+			case "session.input":
+				s.terms.ForwardInput(context.Background(), s.hub, s.st,
+					msg.SessionID, msg.DataB64, sess.UserID, sess.Username, clientIP(r))
+			case "session.resize":
+				s.terms.ForwardResize(s.hub, msg.SessionID, msg.Rows, msg.Cols, sess.UserID)
 			}
 		}
 	}()

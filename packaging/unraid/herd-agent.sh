@@ -17,7 +17,13 @@ pkill -f "$BINARY" 2>/dev/null
 pkill -f shepherd-linux-amd64 2>/dev/null
 sleep 1
 
-HERD_SERVER=wss://moonshepherd.aowu.tech \
+# 面板凭据失效重新注册时自动备份一次(注册成功后自动生成新凭据;
+# 需要再次重注册,手动删除 credentials.json.old 后重跑本脚本即可)
+[ -f $WORKDIR/credentials.json ] && [ ! -f $WORKDIR/credentials.json.old ] && mv $WORKDIR/credentials.json $WORKDIR/credentials.json.old
+
+# 首连注册:在下方赋值块中加一行 HERD_TOKEN=rt_xxx(面板「节点注册」生成;
+# 已注册的节点不加,Token 为一次性,注册成功即作废)
+HERD_SERVER=wss://panel.example.com \
 HERD_CRED_FILE=$WORKDIR/credentials.json \
 nohup $WORKDIR/$BINARY >> $WORKDIR/herd.log 2>&1 &
 

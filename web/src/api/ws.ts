@@ -26,6 +26,16 @@ export function onEvent(h: Handler): () => void {
   return () => handlers.delete(h)
 }
 
+// 终端上行消息(docs/04 §8):session.input / session.resize。
+// 返回 false 表示通道未连接(调用方提示)。
+export function sendClient(msg: Record<string, unknown>): boolean {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify(msg))
+    return true
+  }
+  return false
+}
+
 export function connectEvents() {
   if (ws) return
   open()

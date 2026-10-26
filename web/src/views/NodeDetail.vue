@@ -9,6 +9,7 @@ import { api, fmtAgo, fmtTime, type AppRow, type Command, type ConfigTarget, typ
 import { onEvent } from '../api/ws'
 import AppDetailDrawer from '../components/AppDetailDrawer.vue'
 import CommandDetailDrawer from '../components/CommandDetailDrawer.vue'
+import NodeTerminal from '../components/NodeTerminal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -271,6 +272,12 @@ async function createConfig() {
       <n-tab-pane name="commands" tab="指令">
         <n-data-table :columns="cmdColumns" :data="commands" :bordered="false" size="small" />
         <div class="muted" style="margin-top:10px; font-size:12px">最近 20 条；点击「详情」查看输出与阶段结果，全部历史见「指令中心」</div>
+      </n-tab-pane>
+
+      <!-- 终端(Web 终端,docs/04 §8) -->
+      <n-tab-pane name="terminal" tab="终端">
+        <NodeTerminal v-if="node" :nodeID="nodeId" :nodeName="node.name" :online="node.status === 'online'"
+          :hasPty="node.capabilities?.includes('pty') ?? false" />
       </n-tab-pane>
 
       <!-- 配置 -->
