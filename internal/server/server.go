@@ -21,6 +21,7 @@ type Options struct {
 	Addr        string // 监听地址，默认 :8080
 	TLSCertFile string // 手动证书（可选；默认建议前置反代）
 	TLSKeyFile  string
+	DistDir     string // Agent 二进制分发目录（install.sh 下载源，docs/01 §4.2 通道③）
 	Dev         bool // 开发模式：不校验 Cookie Secure（本地 http 调试）
 	TrustProxy  bool // 信任反代安全头：X-Forwarded-Proto=https 视为已 TLS（前置 Caddy/Nginx 时开启，docs/05 §3.1）
 }
@@ -40,6 +41,9 @@ type Server struct {
 func New(opt Options, st *store.Store, box *credenc.Box) (*Server, error) {
 	if opt.Addr == "" {
 		opt.Addr = ":8080"
+	}
+	if opt.DistDir == "" {
+		opt.DistDir = "distro-bin"
 	}
 	s := &Server{
 		opt:      opt,
@@ -100,6 +104,10 @@ func (s *Server) buildRouter() http.Handler {
 
 	// Agent WSS 网关（docs/04；路径 /agent）
 	r.Get("/agent", newGateway(s).handler)
+
+	// 一键安装与 Agent 二进制下发（docs/01 §4.2 通道③；公开——二进制无秘密,注册仍需 Token）
+	r.Get("/install.sh", s.handleInstallSh)
+	r.Get("/dist/herd-linux-{arch}", s.handleDistBinary)
 
 	// REST API（docs/06）
 	r.Route("/api/v1", func(api chi.Router) {
