@@ -11,25 +11,39 @@ import (
 
 // 当前协议版本（主.次，见 docs/04 §1）。
 const (
-	ProtoMajor = 1
-	ProtoMinor = 0
+	ProtoMajor   = 1
+	ProtoMinor   = 0
 	ProtoVersion = "1.0"
 )
 
 // 消息类型（docs/04 §5）。
 const (
-	TypeRegister       = "register"
-	TypeRegisterAck    = "register_ack"
-	TypeHello          = "hello"
-	TypeHelloAck       = "hello_ack"
-	TypeHeartbeat      = "heartbeat"
-	TypeReport         = "report"
-	TypeCommand        = "command"
-	TypeCommandResult  = "command_result"
-	TypeError          = "error"
+	TypeRegister      = "register"
+	TypeRegisterAck   = "register_ack"
+	TypeHello         = "hello"
+	TypeHelloAck      = "hello_ack"
+	TypeHeartbeat     = "heartbeat"
+	TypeReport        = "report"
+	TypeCommand       = "command"
+	TypeCommandResult = "command_result"
+	TypeError         = "error"
 	// P1 预留
 	TypeStreamChunk = "stream_chunk"
 	TypeStreamStop  = "stream_stop"
+	// 交互式终端会话（方案 B：Web 终端，docs/04 §7）
+	TypeSessionOpen    = "session.open"     // P→A 打开 PTY 会话
+	TypeSessionOpenAck = "session.open_ack" // A→P 打开结果
+	TypeSessionInput   = "session.input"    // P→A 终端输入（base64）
+	TypeSessionOutput  = "session.output"   // A→P 终端输出（base64）
+	TypeSessionResize  = "session.resize"   // P→A 窗口尺寸变化
+	TypeSessionClose   = "session.close"    // 双向 会话关闭
+)
+
+// Agent capabilities（register.capabilities；面板按能力开放功能）。
+const (
+	CapProbe = "probe" // 应用探测（M3）
+	CapExec  = "exec"  // 远程命令（M2）
+	CapPty   = "pty"   // 交互式终端（Web 终端）
 )
 
 // 指令类型（docs/04 §5.3）。
@@ -72,12 +86,12 @@ const MaxPayloadBytes = 1 << 20
 
 // RegisterPayload Agent 首次注册（一次性 Token 换发节点身份）。
 type RegisterPayload struct {
-	RegistrationToken string           `json:"registration_token"`
-	Hostname          string           `json:"hostname"`
-	OS                OSInfo           `json:"os"`
-	AgentVersion      string           `json:"agent_version"`
-	ProtoVersion      string           `json:"proto_version"`
-	Capabilities      []string         `json:"capabilities"`
+	RegistrationToken string   `json:"registration_token"`
+	Hostname          string   `json:"hostname"`
+	OS                OSInfo   `json:"os"`
+	AgentVersion      string   `json:"agent_version"`
+	ProtoVersion      string   `json:"proto_version"`
+	Capabilities      []string `json:"capabilities"`
 }
 
 type OSInfo struct {
@@ -88,9 +102,9 @@ type OSInfo struct {
 
 // RegisterAckPayload 面板回执：node_secret 唯一一次明文下发（TLS 保护下）。
 type RegisterAckPayload struct {
-	NodeID     string       `json:"node_id"`
-	NodeSecret string       `json:"node_secret"`
-	Config     AgentConfig  `json:"config"`
+	NodeID     string      `json:"node_id"`
+	NodeSecret string      `json:"node_secret"`
+	Config     AgentConfig `json:"config"`
 }
 
 // HelloPayload 每次连接的第一条消息：HMAC 挑战认证（docs/04 §2.3）。
@@ -215,6 +229,49 @@ type Stage struct {
 	Detail string `json:"detail,omitempty"`
 }
 
+// ---------- 交互式终端会话（docs/04 §7） ----------
+
+// SessionOpenPayload 面板请求打开 PTY 会话；session_id 由面板生成（审计关联）。
+type SessionOpenPayload struct {
+	SessionID string `json:"session_id"`
+	Rows      int    `json:"rows"`
+	Cols      int    `json:"cols"`
+}
+
+// SessionOpenAckPayload Agent 回执：ok=false 时携带原因（并发上限/系统不支持等）。
+type SessionOpenAckPayload struct {
+	SessionID string `json:"session_id"`
+	OK        bool   `json:"ok"`
+	Error     string `json:"error,omitempty"`
+}
+
+// SessionIOPayload 终端输入/输出，Data 为原始终端字节流的 base64
+// （PTY 输出可为任意字节含非 UTF-8 序列，文本帧 JSON 无法安全承载，docs/04 §7.2）。
+type SessionIOPayload struct {
+	SessionID string `json:"session_id"`
+	Data      string `json:"data_b64"`
+}
+
+// SessionResizePayload 终端窗口尺寸变化（行/列），Agent 转 SIGWINCH。
+type SessionResizePayload struct {
+	SessionID string `json:"session_id"`
+	Rows      int    `json:"rows"`
+	Cols      int    `json:"cols"`
+}
+
+// SessionClosePayload 会话关闭（双向）；Reason 供审计：user_close / idle_timeout /
+// conn_closed / exit / limit / error。
+type SessionClosePayload struct {
+	SessionID string `json:"session_id"`
+	Reason    string `json:"reason,omitempty"`
+}
+
+// 终端会话约束（docs/04 §7.1；Agent 侧硬限制，面板侧另有会话数限制）。
+const (
+	MaxSessionsPerAgent = 3       // 每 Agent 并发会话上限
+	SessionIdleTimeoutS = 15 * 60 // 无输入无输出空闲超时（秒）
+)
+
 // ---------- 错误（docs/04 §5.5/§5.6） ----------
 
 type ErrorPayload struct {
@@ -225,14 +282,14 @@ type ErrorPayload struct {
 
 // 错误码表（docs/04 §5.6）。
 const (
-	ErrBadToken        = 1001 // registration_token 无效/已用
-	ErrTokenExpired    = 1002
-	ErrAuthFailed      = 1003 // hello 认证失败
-	ErrNonceReplay     = 1004
-	ErrUnknownType     = 2001
-	ErrBadPayload      = 2002
-	ErrCmdUnsupported  = 2003
-	ErrNodeDisabled    = 3001
+	ErrBadToken         = 1001 // registration_token 无效/已用
+	ErrTokenExpired     = 1002
+	ErrAuthFailed       = 1003 // hello 认证失败
+	ErrNonceReplay      = 1004
+	ErrUnknownType      = 2001
+	ErrBadPayload       = 2002
+	ErrCmdUnsupported   = 2003
+	ErrNodeDisabled     = 3001
 	ErrProtoUnsupported = 3002
 )
 

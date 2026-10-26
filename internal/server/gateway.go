@@ -227,6 +227,8 @@ func (g *gateway) enterSteady(conn *websocket.Conn, nodeID string, cfg protocol.
 			_ = g.srv.st.UpdateNodeStatus(ctx, nodeID, "offline", time.Now().Unix())
 			_ = g.srv.st.MarkLostCommands(ctx, nodeID)
 			g.srv.hub.publish("node.status", nodeID, map[string]string{"status": "offline"})
+			// 终端会话绑定连接:节点离线全会话终结(docs/04 §8.1)
+			g.srv.terms.NodeOffline(ctx, g.srv.hub, g.srv.st, nodeID)
 		}
 	}()
 
@@ -281,6 +283,18 @@ func (g *gateway) enterSteady(conn *websocket.Conn, nodeID string, cfg protocol.
 			g.onReport(ctx, nodeID, env)
 		case protocol.TypeCommandResult:
 			g.onCommandResult(ctx, nodeID, env)
+		case protocol.TypeSessionOpenAck:
+			if p, ok := parseEnv[protocol.SessionOpenAckPayload](env); ok {
+				g.srv.terms.OnOpenAck(p)
+			}
+		case protocol.TypeSessionOutput:
+			if p, ok := parseEnv[protocol.SessionIOPayload](env); ok {
+				g.srv.terms.OnOutput(g.srv.hub, nodeID, p)
+			}
+		case protocol.TypeSessionClose:
+			if p, ok := parseEnv[protocol.SessionClosePayload](env); ok {
+				g.srv.terms.OnClose(ctx, g.srv.hub, g.srv.st, nodeID, p)
+			}
 		case protocol.TypeError:
 			var ep protocol.ErrorPayload
 			if b, _ := json.Marshal(env.Payload); json.Unmarshal(b, &ep) == nil {
@@ -446,3 +460,16 @@ func (g *gateway) nonceSeen(nodeID, nonce string) bool {
 }
 
 func newMsgID() string { return "m_" + randHex(16) }
+
+// parseEnv 泛型解析 envelope payload。
+func parseEnv[P any](env *protocol.Envelope) (P, bool) {
+	var p P
+	b, err := json.Marshal(env.Payload)
+	if err != nil {
+		return p, false
+	}
+	if json.Unmarshal(b, &p) != nil {
+		return p, false
+	}
+	return p, true
+}

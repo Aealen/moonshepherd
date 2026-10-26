@@ -52,7 +52,7 @@ func (e *E) exec(ctx context.Context, payload json.RawMessage, timeoutS int) Res
 	var stdout, stderr limitBuf
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	setSysProcAttr(cmd)
+	SetSysProcAttr(cmd)
 	err := cmd.Run()
 	res := protocol.CommandResultPayload{Status: protocol.ResultSuccess, Stdout: stdout.String(), Stderr: stderr.String(), Truncated: stdout.truncated || stderr.truncated}
 	if ctx.Err() == context.DeadlineExceeded {

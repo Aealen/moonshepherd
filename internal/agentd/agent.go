@@ -4,6 +4,7 @@ package agentd
 import (
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -43,6 +44,7 @@ type credentials struct {
 type Agent struct {
 	opt  Options
 	exec *executor.E
+	tm   *terminalManager
 
 	sendMu sync.Mutex
 	conn   *websocket.Conn
@@ -61,7 +63,10 @@ func New(opt Options) *Agent {
 		home, _ := os.UserHomeDir()
 		opt.CredFile = filepath.Join(home, ".herd", "credentials.json")
 	}
-	return &Agent{opt: opt, exec: &executor.E{}, cfg: protocol.DefaultAgentConfig(), idem: map[string]protocol.CommandResultPayload{}}
+	a := &Agent{opt: opt, exec: &executor.E{}, cfg: protocol.DefaultAgentConfig(), idem: map[string]protocol.CommandResultPayload{}}
+	a.tm = newTerminalManager()
+	a.tm.emit = a.send
+	return a
 }
 
 // Run 主循环：加载凭据/注册 → 连接 → 认证 → 常驻；断线指数退避重连（docs/04 §3）。
@@ -163,7 +168,7 @@ func (a *Agent) register(ctx context.Context) (*credentials, error) {
 		Payload: protocol.RegisterPayload{
 			RegistrationToken: a.opt.Token, Hostname: host,
 			OS: osInfo(), AgentVersion: version.Version,
-			ProtoVersion: protocol.ProtoVersion, Capabilities: probe.Available(),
+			ProtoVersion: protocol.ProtoVersion, Capabilities: append(probe.Available(), protocol.CapPty),
 		}}
 	if err := conn.WriteJSON(reg); err != nil {
 		return nil, err
@@ -255,6 +260,9 @@ func (a *Agent) runOnce(ctx context.Context, creds *credentials) (int, error) {
 		a.sendMu.Lock()
 		a.conn = nil
 		a.sendMu.Unlock()
+		// 终端会话绑定连接:连接断开会话随之终止(docs/04 §7.1),
+		// 先于 conn 关闭尽力发出 close 通知(多数场景连接已死,发送静默失败属预期)
+		a.tm.CloseAll("conn_closed")
 		conn.Close()
 	}()
 
@@ -359,7 +367,7 @@ func (a *Agent) sendReports(names []string) {
 	}
 }
 
-// handleEnvelope 处理面板消息：command / error。
+// handleEnvelope 处理面板消息：command / session.* / error。
 func (a *Agent) handleEnvelope(ctx context.Context, env protocol.Envelope) {
 	switch env.Type {
 	case protocol.TypeCommand:
@@ -369,8 +377,73 @@ func (a *Agent) handleEnvelope(ctx context.Context, env protocol.Envelope) {
 			return
 		}
 		go a.executeCommand(ctx, cp)
+	case protocol.TypeSessionOpen:
+		a.handleSessionOpen(env)
+	case protocol.TypeSessionInput:
+		a.handleSessionInput(env)
+	case protocol.TypeSessionResize:
+		a.handleSessionResize(env)
+	case protocol.TypeSessionClose:
+		if p, ok := parseSessionPayload[protocol.SessionClosePayload](env); ok {
+			if s := a.tm.get(p.SessionID); s != nil {
+				s.close("user_close")
+			}
+		}
 	case protocol.TypeError:
 		slog.Warn("面板错误消息", "envelope", env.ID)
+	}
+}
+
+// ---------- 终端会话消息处理(docs/04 §7) ----------
+
+// parseSessionPayload 解析会话消息 payload 泛型辅助。
+func parseSessionPayload[P any](env protocol.Envelope) (P, bool) {
+	var p P
+	b, err := json.Marshal(env.Payload)
+	if err != nil {
+		return p, false
+	}
+	if json.Unmarshal(b, &p) != nil {
+		return p, false
+	}
+	return p, true
+}
+
+// handleSessionOpen 打开 PTY 会话并回执(ok=false 携带原因)。
+func (a *Agent) handleSessionOpen(env protocol.Envelope) {
+	p, ok := parseSessionPayload[protocol.SessionOpenPayload](env)
+	if !ok || p.SessionID == "" {
+		return
+	}
+	ack := protocol.SessionOpenAckPayload{SessionID: p.SessionID, OK: true}
+	if err := a.tm.Open(p.SessionID, p.Rows, p.Cols); err != nil {
+		ack.OK = false
+		ack.Error = err.Error()
+	}
+	a.send(&protocol.Envelope{ID: newID(), Type: protocol.TypeSessionOpenAck, TS: time.Now().Unix(), Payload: ack})
+}
+
+// handleSessionInput 终端输入(base64 → PTY);会话不存在(刚关闭的竞态)静默丢弃。
+func (a *Agent) handleSessionInput(env protocol.Envelope) {
+	p, ok := parseSessionPayload[protocol.SessionIOPayload](env)
+	if !ok {
+		return
+	}
+	if s := a.tm.get(p.SessionID); s != nil {
+		if b, err := base64.StdEncoding.DecodeString(p.Data); err == nil {
+			_ = s.Write(b)
+		}
+	}
+}
+
+// handleSessionResize 窗口尺寸变化。
+func (a *Agent) handleSessionResize(env protocol.Envelope) {
+	p, ok := parseSessionPayload[protocol.SessionResizePayload](env)
+	if !ok {
+		return
+	}
+	if s := a.tm.get(p.SessionID); s != nil {
+		_ = s.Resize(p.Rows, p.Cols)
 	}
 }
 

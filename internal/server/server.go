@@ -31,7 +31,8 @@ type Server struct {
 	st       *store.Store
 	box      *credenc.Box
 	hub      *agentHub
-	sessions *sessionStore
+	sessions *sessionStore  // 登录会话(Cookie)
+	terms    *panelSessions // 终端会话(Web 终端,docs/04 §8)
 	limiter  *loginLimiter
 	router   http.Handler
 }
@@ -47,6 +48,7 @@ func New(opt Options, st *store.Store, box *credenc.Box) (*Server, error) {
 		box:      box,
 		hub:      newHub(),
 		sessions: newSessionStore(),
+		terms:    newPanelSessions(),
 		limiter:  newLoginLimiter(),
 	}
 	s.router = s.buildRouter()
@@ -124,6 +126,8 @@ func (s *Server) buildRouter() http.Handler {
 			auth.Get("/nodes/{id}/apps", s.handleNodeApps)
 
 			auth.Post("/nodes/{id}/commands", s.handleCreateCommand)
+			auth.Post("/nodes/{id}/sessions", s.handleOpenTerminal)
+			auth.Delete("/nodes/{id}/sessions/{sid}", s.handleCloseTerminal)
 			auth.Get("/nodes/{id}/configs", s.handleListConfigs)
 			auth.Post("/nodes/{id}/configs", s.handleCreateConfig)
 
@@ -259,10 +263,10 @@ func writeErr(w http.ResponseWriter, status int, code, msg string) {
 }
 
 type pageResp struct {
-	Data     any   `json:"data"`
-	Page     int   `json:"page"`
-	PageSize int   `json:"page_size"`
-	Total    int   `json:"total"`
+	Data     any `json:"data"`
+	Page     int `json:"page"`
+	PageSize int `json:"page_size"`
+	Total    int `json:"total"`
 }
 
 func writePage(w http.ResponseWriter, page, pageSize, total int, data any) {
