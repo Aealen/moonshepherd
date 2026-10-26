@@ -20,3 +20,4 @@ master.key
 
 # 冒烟/临时
 smoke-*
+distro-bin/

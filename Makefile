@@ -58,3 +58,10 @@ release: cross
 
 clean:
 	rm -rf dist web/dist/assets web/dist/index.html web/dist/favicon.svg
+
+## distro-bin：三架构 Agent 二进制到 distro-bin/（面板 install.sh 分发源，docs/01 §4.2 通道③）
+distro-bin:
+	mkdir -p distro-bin
+	$(GOFLAGS) GOOS=linux GOARCH=amd64 go build -ldflags '$(LDFLAGS)' -o distro-bin/herd-linux-amd64 ./cmd/herd
+	$(GOFLAGS) GOOS=linux GOARCH=arm64 go build -ldflags '$(LDFLAGS)' -o distro-bin/herd-linux-arm64 ./cmd/herd
+	$(GOFLAGS) GOOS=linux GOARCH=arm GOARM=7 go build -ldflags '$(LDFLAGS)' -o distro-bin/herd-linux-armv7 ./cmd/herd

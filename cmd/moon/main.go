@@ -51,6 +51,7 @@ func main() {
 		addr       = fs.String("addr", ":8080", "监听地址")
 		tlsCert    = fs.String("tls-cert", "", "TLS 证书文件（公网直跑；建议前置反代，见 docs/05）")
 		tlsKey     = fs.String("tls-key", "", "TLS 私钥文件")
+		distDir    = fs.String("dist-dir", envOr("HERD_DIST_DIR", "distro-bin"), "Agent 二进制分发目录（install.sh 下载源，docs/01 §4.2）")
 		dev        = fs.Bool("dev", false, "开发模式（本地 http：Cookie 不加 Secure、放宽回环限制）")
 		trustProxy = fs.Bool("trust-proxy", envBool("HERD_TRUST_PROXY"), "信任反代安全头（X-Forwarded-Proto=https 视为已 TLS；前置 Caddy/Nginx 反代时开启，docs/05 §3.1）")
 		adminPass  = fs.String("admin-password", "", "首次初始化的管理员密码（缺省则生成随机密码打印一次）")
@@ -83,7 +84,7 @@ func main() {
 	srv, err := server.New(server.Options{
 		DataDir: *dataDir, Addr: *addr,
 		TLSCertFile: *tlsCert, TLSKeyFile: *tlsKey, Dev: *dev,
-		TrustProxy: *trustProxy,
+		DistDir: *distDir, TrustProxy: *trustProxy,
 	}, st, box)
 	if err != nil {
 		slog.Error("组装面板失败", "err", err)
@@ -103,6 +104,14 @@ func envBool(name string) bool {
 		return true
 	}
 	return false
+}
+
+// envOr 环境变量取字符串，缺省返回 def。
+func envOr(name, def string) string {
+	if v := os.Getenv(name); v != "" {
+		return v
+	}
+	return def
 }
 
 // initAdmin 首次启动初始化管理员：--admin-password > HERD_ADMIN_PASSWORD > 随机生成打印一次。
