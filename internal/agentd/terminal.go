@@ -175,12 +175,20 @@ func (s *termSession) readLoop() {
 	}
 }
 
-// close 幂等关闭:关 PTY(子进程收 SIGHUP 退出)→ 回收 → 上报 → 摘除。
+// close 幂等关闭:关 PTY(SIGHUP 通知会话)→ 宽限等待退出 → 超时强杀 → 回收。
+// shell 不随 SIGHUP 退出的场景(非交互/忽略信号)不能让 Wait 无限阻塞。
 func (s *termSession) close(reason string) {
 	s.closeOnce.Do(func() {
 		_ = s.ptmx.Close()
 		if s.cmd.Process != nil {
-			_, _ = s.cmd.Process.Wait() // 回收僵尸;PTY 已关,Wait 的报错无意义
+			done := make(chan struct{})
+			go func() { _ = s.cmd.Wait(); close(done) }()
+			select {
+			case <-done:
+			case <-time.After(2 * time.Second):
+				_ = s.cmd.Process.Kill() // SIGKILL 后 Wait 必然返回
+				<-done
+			}
 		}
 		s.tm.remove(s)
 		s.tm.sendEnvelope(&protocol.Envelope{
