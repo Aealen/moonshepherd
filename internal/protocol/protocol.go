@@ -37,6 +37,10 @@ const (
 	TypeSessionOutput  = "session.output"   // A→P 终端输出（base64）
 	TypeSessionResize  = "session.resize"   // P→A 窗口尺寸变化
 	TypeSessionClose   = "session.close"    // 双向 会话关闭
+	// 容器日志实时流(docs/04 §9:tail -f 语义,弹窗直读不经指令中心)
+	TypeLogStreamStart = "log.stream.start" // P→A 开始跟随容器日志
+	TypeLogStreamChunk = "log.stream.chunk" // A→P 日志增量(base64)
+	TypeLogStreamStop  = "log.stream.stop"  // 双向 停止跟随
 )
 
 // Agent capabilities（register.capabilities；面板按能力开放功能）。
@@ -292,6 +296,35 @@ type SessionClosePayload struct {
 const (
 	MaxSessionsPerAgent = 3       // 每 Agent 并发会话上限
 	SessionIdleTimeoutS = 15 * 60 // 无输入无输出空闲超时（秒）
+)
+
+// ---------- 容器日志实时流（docs/04 §9） ----------
+
+// LogStreamStartPayload 面板请求跟随容器日志:先回 tail_lines 历史再持续增量。
+type LogStreamStartPayload struct {
+	StreamID  string `json:"stream_id"` // 面板生成,审计关联
+	Container string `json:"container"`
+	TailLines int    `json:"tail_lines,omitempty"` // 缺省 100
+}
+
+// LogStreamChunkPayload 日志增量;EOF 时容器已停止跟随(end=true)。
+type LogStreamChunkPayload struct {
+	StreamID string `json:"stream_id"`
+	Data     string `json:"data_b64"`
+	End      bool   `json:"end,omitempty"`
+}
+
+// LogStreamStopPayload 停止跟随(双向);Reason: user_close / conn_closed / limit / error。
+type LogStreamStopPayload struct {
+	StreamID string `json:"stream_id"`
+	Reason   string `json:"reason,omitempty"`
+}
+
+// 日志流约束(Agent 侧硬限制)。
+const (
+	MaxLogStreamsPerAgent = 5          // 并发日志跟随上限
+	LogStreamTailMax      = 1000       // tail 上限
+	LogStreamTimeoutMin   = 15 * 60    // 跟随最长时长(分钟),防遗忘泄漏
 )
 
 // ---------- 错误（docs/04 §5.5/§5.6） ----------

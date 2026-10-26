@@ -229,6 +229,7 @@ func (g *gateway) enterSteady(conn *websocket.Conn, nodeID string, cfg protocol.
 			g.srv.hub.publish("node.status", nodeID, map[string]string{"status": "offline"})
 			// 终端会话绑定连接:节点离线全会话终结(docs/04 §8.1)
 			g.srv.terms.NodeOffline(ctx, g.srv.hub, g.srv.st, nodeID)
+			g.srv.logstream.NodeOffline(ctx, g.srv.hub, g.srv.st, nodeID)
 		}
 	}()
 

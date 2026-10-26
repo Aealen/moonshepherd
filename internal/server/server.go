@@ -34,6 +34,7 @@ type Server struct {
 	hub      *agentHub
 	sessions *sessionStore  // 登录会话(Cookie)
 	terms    *panelSessions // 终端会话(Web 终端,docs/04 §8)
+	logstream *panelLogStreams // 容器日志流(docs/04 §9)
 	limiter  *loginLimiter
 	router   http.Handler
 }
@@ -53,6 +54,7 @@ func New(opt Options, st *store.Store, box *credenc.Box) (*Server, error) {
 		hub:      newHub(),
 		sessions: newSessionStore(),
 		terms:    newPanelSessions(),
+		logstream: newPanelLogStreams(),
 		limiter:  newLoginLimiter(),
 	}
 	s.router = s.buildRouter()
@@ -135,6 +137,8 @@ func (s *Server) buildRouter() http.Handler {
 
 			auth.Post("/nodes/{id}/commands", s.handleCreateCommand)
 			auth.Post("/nodes/{id}/sessions", s.handleOpenTerminal)
+			auth.Post("/nodes/{id}/logstream", s.handleOpenLogStream)
+			auth.Delete("/nodes/{id}/logstream/{sid}", s.handleCloseLogStream)
 			auth.Delete("/nodes/{id}/sessions/{sid}", s.handleCloseTerminal)
 			auth.Get("/nodes/{id}/configs", s.handleListConfigs)
 			auth.Post("/nodes/{id}/configs", s.handleCreateConfig)
