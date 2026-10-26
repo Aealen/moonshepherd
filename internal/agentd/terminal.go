@@ -15,7 +15,6 @@ import (
 
 	"github.com/creack/pty"
 
-	"github.com/aealen/moonshepherd/internal/executor"
 	"github.com/aealen/moonshepherd/internal/protocol"
 )
 
@@ -56,7 +55,8 @@ func (tm *terminalManager) Open(sessionID string, rows, cols int) error {
 	}
 	cmd := exec.Command(shell)
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color")
-	executor.SetSysProcAttr(cmd) // 进程组隔离(与 executor.exec 一致)
+	// 不预设 Setpgid:creack/pty 会追加 Setsid+Setctty,setsid 后再 setpgid 必 EPERM;
+	// 新会话本身就是新进程组,关闭 ptmx 时 SIGHUP 即终止整个会话
 	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: uint16(rows), Cols: uint16(cols)})
 	if err != nil {
 		return fmt.Errorf("打开 PTY 失败: %w", err)
