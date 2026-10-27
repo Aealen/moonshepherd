@@ -35,9 +35,9 @@ func newSessionStore() *sessionStore {
 }
 
 const (
-	sessionIdleTTL  = 2 * time.Hour
-	sessionAbsTTL   = 12 * time.Hour
-	sessionCookie   = "herd_session"
+	sessionIdleTTL = 2 * time.Hour
+	sessionAbsTTL  = 12 * time.Hour
+	sessionCookie  = "herd_session"
 )
 
 func (ss *sessionStore) Create(userID int64, username string) *Session {
@@ -108,10 +108,10 @@ func newLoginLimiter() *loginLimiter {
 }
 
 const (
-	loginWindow      = 15 * time.Minute
-	loginMaxFails    = 5
-	loginBaseLock    = 15 * time.Minute
-	loginMaxLock     = 24 * time.Hour
+	loginWindow         = 15 * time.Minute
+	loginMaxFails       = 5
+	loginBaseLock       = 15 * time.Minute
+	loginMaxLock        = 24 * time.Hour
 	loginLockMultiplier = 2
 )
 

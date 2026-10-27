@@ -18,6 +18,24 @@ const pageSize = 20
 const loading = ref(false)
 const statusFilter = ref<string | null>(null)
 const query = ref('')
+// 面板自身版本(升级比对基准;/system/info 面板卡片同源)
+const panelVersion = ref('')
+
+// updateAgent 触发自更新(POST /nodes/{id}/update);成败以重连后版本号为准
+async function updateAgent(row: Node) {
+  try {
+    await api.post(`/nodes/${row.id}/update`)
+    message.success(`升级指令已下发:${row.agent_version} → ${panelVersion.value}。节点将在 1~2 分钟内重连`)
+    setTimeout(load, 8000) // 8 秒后刷新版本列观察
+  } catch (e: any) { message.error(e.message) }
+}
+
+async function loadPanelVersion() {
+  try {
+    const info = await api.get<{ panel_version: string }>('/system/info')
+    panelVersion.value = info.panel_version
+  } catch { /* 忽略 */ }
+}
 
 const statusTag = (s: string, enabled: boolean) => {
   if (!enabled) return h('span', { class: 'node-state disabled' }, [h('i'), '已禁用'])
@@ -34,7 +52,17 @@ const columns: DataTableColumns<Node> = [
     ]),
   },
   { title: '状态', key: 'status', width: 90, render: (row) => statusTag(row.status, row.enabled) },
-  { title: 'Agent', key: 'agent_version', width: 110, render: (row) => h('span', { class: 'mono muted' }, row.agent_version || '—') },
+  {
+    title: 'Agent', key: 'agent_version', width: 120,
+    render: (row) => {
+      if (!row.agent_version) return h('span', { class: 'muted' }, '—')
+      const outdated = row.status === 'online' && panelVersion.value && row.agent_version !== panelVersion.value
+      return h('span', { class: 'mono ' + (outdated ? 'ver-stale' : 'muted') }, [
+        row.agent_version,
+        outdated ? h('span', { class: 'ver-badge', title: '待升级,操作列可更新' }, '待升级') : null,
+      ])
+    },
+  },
   {
     title: '标签', key: 'tags', width: 160,
     render: (row) => row.tags.length
@@ -47,6 +75,12 @@ const columns: DataTableColumns<Node> = [
     render: (row) => h(NSpace, { size: 6 }, {
       default: () => [
         h(NButton, { size: 'tiny', quaternary: true, type: 'primary', onClick: () => router.push(`/nodes/${row.id}`) }, { default: () => '详情' }),
+        (row.status === 'online' && panelVersion.value && row.agent_version && row.agent_version !== panelVersion.value && !(row.capabilities ?? []).includes('supervisor:unknown'))
+          ? h(NPopconfirm, { onPositiveClick: () => updateAgent(row) }, {
+              trigger: () => h(NButton, { size: 'tiny', quaternary: true, type: 'info' }, { default: () => '升级' }),
+              default: () => `将 Agent 从 ${row.agent_version} 更新到 ${panelVersion.value}。更新中连接会中断 1~2 分钟,失败自动回滚旧版(不会失联)。确定?`,
+            })
+          : null,
         row.enabled
           ? h(NPopconfirm, { onPositiveClick: () => toggleNode(row, false) }, {
               trigger: () => h(NButton, { size: 'tiny', quaternary: true, type: 'warning' }, { default: () => '禁用' }),
@@ -167,12 +201,33 @@ async function copy(text: string) {
 let off: (() => void) | null = null
 onMounted(() => {
   load()
+  loadPanelVersion()
   off = onEvent((ev) => {
     if (ev.topic === 'node.status' || ev.topic === 'node.registered') load()
   })
 })
 onUnmounted(() => off?.())
 </script>
+
+<style scoped>
+/* 待升级版本徽章 */
+.ver-stale { color: #f2c97d; }
+.ver-badge.warn {
+  background: rgba(157, 165, 180, 0.1);
+  color: #9aa3b8;
+  border-color: rgba(157, 165, 180, 0.3);
+}
+.ver-badge {
+  margin-left: 7px;
+  font-size: 10.5px;
+  font-family: "Inter", system-ui, sans-serif;
+  padding: 1px 7px;
+  border-radius: 99px;
+  background: rgba(242, 201, 125, 0.12);
+  color: #f2c97d;
+  border: 1px solid rgba(242, 201, 125, 0.3);
+}
+</style>
 
 <template>
   <div class="page">

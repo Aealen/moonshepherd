@@ -21,8 +21,8 @@ type agentHub struct {
 	mu    sync.Mutex
 	conns map[string]*agentConn // node_id -> conn（每节点单连接）
 
-	subMu   sync.Mutex
-	subs    map[chan hubEvent]struct{}
+	subMu sync.Mutex
+	subs  map[chan hubEvent]struct{}
 }
 
 // hubEvent 浏览器事件通道推送的事件（docs/06 §3）。

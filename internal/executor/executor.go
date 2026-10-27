@@ -37,6 +37,16 @@ func (e *E) Execute(ctx context.Context, cmdType string, payload json.RawMessage
 		return e.configApply(ctx, payload, timeoutS)
 	case protocol.CmdDockerOp:
 		return e.dockerOp(ctx, payload, timeoutS)
+	case protocol.CmdAgentUpdate:
+		var p protocol.AgentUpdatePayload
+		if err := json.Unmarshal(payload, &p); err != nil {
+			return fail(payload, "agent.update payload 非法")
+		}
+		if err := SelfUpdate(ctx, p, timeoutS); err != nil {
+			return Result{Reply: protocol.CommandResultPayload{Status: protocol.ResultFailed, Error: err.Error()}}
+		}
+		// 成功路径不返回(Exec 接管/systemd restart 进程终止);systemd 分支超时兜底也到不了这里
+		return Result{Reply: protocol.CommandResultPayload{Status: protocol.ResultSuccess, Stdout: "更新流程已发起"}}
 	default:
 		return fail(payload, fmt.Sprintf("不支持的指令类型: %s", cmdType))
 	}

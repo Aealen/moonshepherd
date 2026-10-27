@@ -152,7 +152,7 @@ type CommandResultIn struct {
 	Status    string
 	Stdout    string
 	Stderr    string
-	Truncated  bool
+	Truncated bool
 	ExitCode  int
 	Stages    json.RawMessage
 	Error     string
