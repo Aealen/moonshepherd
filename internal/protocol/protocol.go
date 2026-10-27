@@ -44,6 +44,11 @@ const (
 	// 远端文件只读查看(docs/04 §10:白名单文本配置,一问一答)
 	TypeFileRead  = "file.read"  // P→A 读文件
 	TypeFileReadAck = "file.read.ack" // A→P 内容/错误
+	// 文件管理器(docs/04 §11:树浏览 + 常用操作,一问一答 + 上传分片)
+	TypeFileOp     = "file.op"     // P→A list/write/mkdir/delete/move/copy/rename
+	TypeFileOpAck  = "file.op.ack" // A→P 操作结果
+	TypeFileUploadChunk = "file.upload.chunk" // P→A 上传分片(base64)
+	TypeFileUploadDone  = "file.upload.done"  // P→A 上传完成(校验+就位)
 )
 
 // Agent capabilities（register.capabilities；面板按能力开放功能）。
@@ -350,6 +355,69 @@ type FileReadAckPayload struct {
 // 文件查看约束(Agent 侧硬限制;docs/05 安全:只读文本配置)。
 const (
 	MaxFileReadBytes = 512 << 10 // 512KB,超出截断
+)
+
+// ---------- 文件管理器(docs/04 §11) ----------
+
+// FileOpPayload P→A 操作请求。Op 枚举:
+//
+//	list    {path}                      → 目录条目(Entries)
+//	write   {path, content}             → 原子写文本(临时文件+rename)
+//	mkdir   {path}
+//	delete  {path}                      → 文件或空目录;递归需 recursive=true
+//	move    {path, dest}                → 同文件系统 rename;跨区失败提示复制+删
+//	copy    {path, dest}                → 文件复制(目录递归)
+//	rename  {path, dest}                → 同 move(语义别名,UI 区分展示)
+type FileOpPayload struct {
+	RequestID string `json:"request_id"`
+	Op        string `json:"op"`
+	Path      string `json:"path"`
+	Dest      string `json:"dest,omitempty"`
+	Content   string `json:"content,omitempty"`
+	Recursive bool   `json:"recursive,omitempty"`
+}
+
+// FileEntry 目录条目(list 应答)。
+type FileEntry struct {
+	Name    string `json:"name"`
+	IsDir   bool   `json:"dir"`
+	Size    int64  `json:"size,omitempty"`
+	Mode    string `json:"mode,omitempty"`     // 如 -rw-r--r-- / drwxr-xr-x
+	ModTime int64  `json:"mtime,omitempty"`    // Unix 秒
+	NoPerm  bool   `json:"no_perm,omitempty"`  // 无法读取(占位提示,不报错)
+}
+
+// FileOpAckPayload 操作应答:成功按 Op 带结果,失败带 Error(含权限语义)。
+type FileOpAckPayload struct {
+	RequestID string      `json:"request_id"`
+	OK        bool        `json:"ok"`
+	Entries   []FileEntry `json:"entries,omitempty"` // list
+	Error     string      `json:"error,omitempty"`
+	// 权限语义:denied=true 表示 EACCES/EPERM(前端弹"权限不足"而非"出错")
+	Denied bool `json:"denied,omitempty"`
+}
+
+// FileUploadChunkPayload 上传分片:同 SessionID 顺序累积,Done 校验就位。
+type FileUploadChunkPayload struct {
+	SessionID string `json:"session_id"` // 面板生成
+	Seq       int    `json:"seq"`
+	Data      string `json:"data_b64"`
+	Path      string `json:"path,omitempty"` // 首片(seq=0)必带:目标绝对路径
+}
+
+// FileUploadDonePayload 上传完成:sha256 校验通过才原子就位到 Path。
+type FileUploadDonePayload struct {
+	SessionID string `json:"session_id"`
+	Path      string `json:"path"` // 目标绝对路径
+	SHA256    string `json:"sha256"`
+	Size      int64  `json:"size"`
+}
+
+// 文件管理约束(Agent 侧硬限制)。
+const (
+	MaxFileWriteBytes    = 512 << 10  // 单次写/编辑上限
+	MaxFileUploadBytes   = 256 << 20  // 单文件上传上限 256MB
+	FileUploadChunkBytes = 240 << 10  // 分片 ≤240KB(base64 后 < 1MiB 单帧)
 )
 
 // ---------- 错误（docs/04 §5.5/§5.6） ----------

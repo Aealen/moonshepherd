@@ -11,6 +11,7 @@ import AppDetailDrawer from '../components/AppDetailDrawer.vue'
 import CommandDetailDrawer from '../components/CommandDetailDrawer.vue'
 import DockerOps from '../components/DockerOps.vue'
 import NodeTerminal from '../components/NodeTerminal.vue'
+import FileManager from '../components/FileManager.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -352,6 +353,11 @@ function adoptCandidate(c: ConfCandidate) {
       <n-tab-pane name="terminal" tab="终端">
         <NodeTerminal v-if="node" :nodeID="nodeId" :nodeName="node.name" :online="node.status === 'online'"
           :hasPty="node.capabilities?.includes('pty') ?? false" />
+      </n-tab-pane>
+
+      <!-- 文件(docs/04 §11) -->
+      <n-tab-pane name="files" tab="文件">
+        <FileManager v-if="node" :nodeID="nodeId" :online="node.status === 'online'" />
       </n-tab-pane>
 
       <!-- 配置 -->

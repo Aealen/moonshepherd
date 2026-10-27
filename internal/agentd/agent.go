@@ -393,6 +393,33 @@ func (a *Agent) handleEnvelope(ctx context.Context, env protocol.Envelope) {
 				s.close("user_close")
 			}
 		}
+	case protocol.TypeFileRead:
+		go handleFileRead(env, a.send)
+	case protocol.TypeFileOp:
+		go handleFileOp(env, a.send) // 异步:大目录拷贝/递归删除耗时不阻塞读循环
+	case protocol.TypeFileUploadChunk:
+		if p, ok := parseSessionPayload[protocol.FileUploadChunkPayload](env); ok {
+			if p.Seq == 0 && p.Path != "" {
+				if _, err := ensureUploadSession(p.SessionID, p.Path); err != nil {
+					a.send(&protocol.Envelope{ID: newID(), Type: protocol.TypeFileOpAck, TS: time.Now().Unix(),
+						Payload: opErr(p.SessionID, err)})
+					return
+				}
+			}
+			handleUploadChunk(env)
+		}
+	case protocol.TypeFileUploadDone:
+		go handleUploadDone(env, a.send)
+	case protocol.TypeLogStreamStart:
+		if p, ok := parseSessionPayload[protocol.LogStreamStartPayload](env); ok && p.StreamID != "" && p.Container != "" {
+			_ = a.lgm.Start(p.StreamID, p.Container, p.TailLines)
+		}
+	case protocol.TypeLogStreamStop:
+		if p, ok := parseSessionPayload[protocol.LogStreamStopPayload](env); ok {
+			if st := a.lgm.get(p.StreamID); st != nil {
+				st.stop("user_close")
+			}
+		}
 	case protocol.TypeError:
 		slog.Warn("面板错误消息", "envelope", env.ID)
 	}
