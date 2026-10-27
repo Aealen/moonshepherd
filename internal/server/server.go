@@ -141,6 +141,8 @@ func (s *Server) buildRouter() http.Handler {
 			auth.Post("/nodes/{id}/sessions", s.handleOpenTerminal)
 			auth.Post("/nodes/{id}/logstream", s.handleOpenLogStream)
 			auth.Post("/nodes/{id}/file/read", s.handleReadFile)
+			auth.Post("/nodes/{id}/file/op", s.handleFileOp)
+			auth.Post("/nodes/{id}/file/upload", s.handleFileUpload)
 			auth.Delete("/nodes/{id}/logstream/{sid}", s.handleCloseLogStream)
 			auth.Delete("/nodes/{id}/sessions/{sid}", s.handleCloseTerminal)
 			auth.Get("/nodes/{id}/configs", s.handleListConfigs)

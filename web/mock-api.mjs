@@ -150,6 +150,30 @@ export function mockPlugin() {
 
         if (url === '/api/v1/audit-logs') return send(page(auditLogs, Number(q.get('page') ?? 1), Number(q.get('page_size') ?? 20)))
         if (url === '/api/v1/system/info') return send(json({ panel_version: 'main-d70fa47', go_version: 'go1.27', os: 'windows', arch: 'amd64', data_dir: './data-dev', node_count: nodes.length, online_count: 2, app_count: apps.length, uptime_s: now() - start }))
+        // 文件管理:file/op 内存仿真(mock 简化——REST 直接返回 ack 结果体,不走事件)
+        const mFileOp = url.match(/^\/api\/v1\/nodes\/(n_\w+)\/file\/op$/)
+        if (mFileOp && req.method === 'POST') {
+          let body = ''
+          req.on('data', (c) => (body += c))
+          req.on('end', () => {
+            const p = JSON.parse(body || '{}')
+            let payload
+            if (p.op === 'list') {
+              payload = { request_id: 'fo_mock', ok: true, entries: [
+                { name: 'etc', dir: true, mode: 'drwxr-xr-x', mtime: now() - 8000 },
+                { name: 'opt', dir: true, mode: 'drwxr-xr-x', mtime: now() - 80000 },
+                { name: 'root-lock', dir: true, no_perm: true },
+                { name: 'nginx.conf', size: 1204, mode: '-rw-r--r--', mtime: now() - 600 },
+                { name: 'deploy.sh', size: 89, mode: '-rwxr-xr-x', mtime: now() - 90000 },
+                { name: 'secret.key', size: 32, mode: '-rw-------', mtime: now() - 300 },
+              ] }
+            } else {
+              payload = { request_id: 'fo_mock', ok: true }
+            }
+            send(json(payload))
+          })
+          return
+        }
         // 文件只读查看:返回仿真配置内容(真实环境经 WSS 转推,此处直接同步给全文)
         const mFileRead = url.match(/^\/api\/v1\/nodes\/(n_\w+)\/file\/read$/)
         if (mFileRead && req.method === 'POST') {
