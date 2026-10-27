@@ -56,6 +56,9 @@ func SelfUpdate(ctx context.Context, p protocol.AgentUpdatePayload, timeoutS int
 	if p.Version == "" || p.DownloadURL == "" || len(p.SHA256) != 64 {
 		return fmt.Errorf("payload 非法:version/download_url/sha256 必填")
 	}
+	if runtime.GOOS != "linux" {
+		return fmt.Errorf("自更新仅支持 Linux;当前 %s", runtime.GOOS)
+	}
 	if !strings.HasPrefix(p.DownloadURL, "https://") && !strings.HasPrefix(p.DownloadURL, "http://localhost") &&
 		!strings.Contains(p.DownloadURL, "127.0.0.1") {
 		return fmt.Errorf("download_url 必须 https(本机调试除外)")
@@ -63,9 +66,6 @@ func SelfUpdate(ctx context.Context, p protocol.AgentUpdatePayload, timeoutS int
 	self := SelfPath()
 	if self == "" {
 		return fmt.Errorf("无法定位自身二进制路径")
-	}
-	if runtime.GOOS != "linux" {
-		return fmt.Errorf("自更新仅支持 Linux;当前 %s", runtime.GOOS)
 	}
 	if timeoutS <= 0 || timeoutS > 600 {
 		timeoutS = 300

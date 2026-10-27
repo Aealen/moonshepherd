@@ -20,7 +20,7 @@ func TestSelfUpdateGuards(t *testing.T) {
 		{"缺 version", protocol.AgentUpdatePayload{DownloadURL: "https://x/herd", SHA256: strings.Repeat("a", 64)}, "payload 非法"},
 		{"缺 sha256", protocol.AgentUpdatePayload{Version: "v9", DownloadURL: "https://x/herd"}, "payload 非法"},
 		{"sha256 长度错", protocol.AgentUpdatePayload{Version: "v9", DownloadURL: "https://x/herd", SHA256: "abc"}, "payload 非法"},
-		{"http 明文拒绝", protocol.AgentUpdatePayload{Version: "v9", DownloadURL: "http://evil.example/herd", SHA256: strings.Repeat("a", 64)}, "https"},
+		{"http 明文拒绝", protocol.AgentUpdatePayload{Version: "v9", DownloadURL: "http://evil.example/herd", SHA256: strings.Repeat("a", 64)}, platformGuardErr()},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -45,8 +45,8 @@ func TestDetectSupervisor(t *testing.T) {
 
 // TestSelfUpdatePlatform 非 Linux 平台直接拒绝(不执行下载)。
 func TestSelfUpdatePlatform(t *testing.T) {
-	if runtime.GOOS != "linux" {
-		t.Skip("Linux 平台不适用")
+	if runtime.GOOS == "linux" {
+		t.Skip("非 Linux 平台专属用例(Linux 上平台守卫不触发)")
 	}
 	err := SelfUpdate(context.Background(), protocol.AgentUpdatePayload{
 		Version: "v9", DownloadURL: "https://x/herd", SHA256: strings.Repeat("a", 64),
@@ -54,4 +54,12 @@ func TestSelfUpdatePlatform(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "仅支持 Linux") {
 		t.Fatalf("非 Linux 应拒绝,实得: %v", err)
 	}
+}
+
+// platformGuardErr 平台守卫提前后,非 Linux 上先撞平台检查(错误文案不同)。
+func platformGuardErr() string {
+	if runtime.GOOS != "linux" {
+		return "仅支持 Linux"
+	}
+	return "https"
 }
