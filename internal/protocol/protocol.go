@@ -42,7 +42,7 @@ const (
 	TypeLogStreamChunk = "log.stream.chunk" // A→P 日志增量(base64)
 	TypeLogStreamStop  = "log.stream.stop"  // 双向 停止跟随
 	// 远端文件只读查看(docs/04 §10:白名单文本配置,一问一答)
-	TypeFileRead  = "file.read"  // P→A 读文件
+	TypeFileRead    = "file.read"     // P→A 读文件
 	TypeFileReadAck = "file.read.ack" // A→P 内容/错误
 )
 
@@ -134,6 +134,9 @@ type AgentConfig struct {
 	HeartbeatIntervalS int `json:"heartbeat_interval_s"`
 	ProbeIntervalS     int `json:"probe_interval_s"`
 	CommandTTLs        int `json:"command_ttl_s"`
+	// Agent 自更新(docs/01 §3.5):ExpectedVersion 非空且 ≠ 自身版本时,
+	// Agent 在 UI/心跳中标记待升级;真正升级仍需面板下发 agent.update 指令(一期手动触发)。
+	ExpectedVersion string `json:"expected_version,omitempty"`
 }
 
 // DefaultAgentConfig 面板默认下行配置（可被面板配置覆盖）。
@@ -325,9 +328,9 @@ type LogStreamStopPayload struct {
 
 // 日志流约束(Agent 侧硬限制)。
 const (
-	MaxLogStreamsPerAgent = 5          // 并发日志跟随上限
-	LogStreamTailMax      = 1000       // tail 上限
-	LogStreamTimeoutMin   = 15 * 60    // 跟随最长时长(分钟),防遗忘泄漏
+	MaxLogStreamsPerAgent = 5       // 并发日志跟随上限
+	LogStreamTailMax      = 1000    // tail 上限
+	LogStreamTimeoutMin   = 15 * 60 // 跟随最长时长(分钟),防遗忘泄漏
 )
 
 // ---------- 远端文件只读查看(docs/04 §10) ----------
@@ -342,7 +345,7 @@ type FileReadPayload struct {
 type FileReadAckPayload struct {
 	RequestID string `json:"request_id"`
 	Content   string `json:"content,omitempty"`
-	Size      int64  `json:"size,omitempty"`     // 文件原始大小(字节)
+	Size      int64  `json:"size,omitempty"`      // 文件原始大小(字节)
 	Truncated bool   `json:"truncated,omitempty"` // 超 MaxFileReadBytes 截断
 	Error     string `json:"error,omitempty"`
 }
@@ -350,6 +353,28 @@ type FileReadAckPayload struct {
 // 文件查看约束(Agent 侧硬限制;docs/05 安全:只读文本配置)。
 const (
 	MaxFileReadBytes = 512 << 10 // 512KB,超出截断
+)
+
+// ---------- Agent 自更新(docs/01 §3.5;docs/04 §5.3 P1 落地) ----------
+
+// AgentUpdatePayload agent.update 指令 payload。
+// DownloadURL 必须为 https(或面板自身下发通道 /dist/…),sha256 强制校验。
+type AgentUpdatePayload struct {
+	Version     string `json:"version"`      // 目标版本(更新后 version 输出)
+	DownloadURL string `json:"download_url"` // 二进制下载地址
+	SHA256      string `json:"sha256"`       // 目标二进制校验和(hex)
+}
+
+// AgentUpdateResultPayload agent.update 回执(经 command_result.stdout/stderr 承载明细)。
+const (
+	UpdateSupervisorSystemd = "systemd" // systemd unit 托管:校验后 systemctl restart
+	UpdateSupervisorBare    = "bare"    // 裸跑(nohup/User Scripts):syscall.Exec 原地接管
+	UpdateSupervisorUnknown = "unknown" // 无法判定:拒绝自动更新(防失联)
+)
+
+// 更新安全约束。
+const (
+	UpdateDownloadMaxBytes = 64 << 20 // 二进制下载上限 64MB
 )
 
 // ---------- 错误（docs/04 §5.5/§5.6） ----------
