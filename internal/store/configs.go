@@ -21,15 +21,15 @@ type ConfigTarget struct {
 
 // ConfigVersion 配置版本（不可变版本链）。
 type ConfigVersion struct {
-	ID         int64           `json:"id"`
-	TargetID   int64           `json:"target_id"`
-	Content    string          `json:"content"`
-	Checksum   string          `json:"checksum"`
-	Status     string          `json:"status"` // draft/applied/rolled_back
-	CommandID  string          `json:"command_id,omitempty"`
+	ID          int64           `json:"id"`
+	TargetID    int64           `json:"target_id"`
+	Content     string          `json:"content"`
+	Checksum    string          `json:"checksum"`
+	Status      string          `json:"status"` // draft/applied/rolled_back
+	CommandID   string          `json:"command_id,omitempty"`
 	ApplyResult json.RawMessage `json:"apply_result,omitempty"`
-	CreatedBy  string          `json:"created_by"`
-	CreatedAt  int64           `json:"created_at"`
+	CreatedBy   string          `json:"created_by"`
+	CreatedAt   int64           `json:"created_at"`
 }
 
 // ConfigTargetWithMeta 列表附加信息：当前生效版本与最近下发结果。

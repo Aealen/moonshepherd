@@ -15,20 +15,20 @@ import (
 
 // Node 节点记录。
 type Node struct {
-	ID           string    `json:"id"`
-	Name         string    `json:"name"`
-	Hostname     string    `json:"hostname"`
-	AgentVersion string    `json:"agent_version"`
-	ProtoVersion string    `json:"proto_version"`
-	OSName       string    `json:"os_name"`
-	OSVersion    string    `json:"os_version"`
-	OSArch       string    `json:"os_arch"`
-	Status       string    `json:"status"`
-	Enabled      bool      `json:"enabled"`
-	LastSeen     int64     `json:"last_seen"`
-	Tags         []string  `json:"tags"`
-	Capabilities []string  `json:"capabilities"`
-	CreatedAt    int64     `json:"created_at"`
+	ID           string   `json:"id"`
+	Name         string   `json:"name"`
+	Hostname     string   `json:"hostname"`
+	AgentVersion string   `json:"agent_version"`
+	ProtoVersion string   `json:"proto_version"`
+	OSName       string   `json:"os_name"`
+	OSVersion    string   `json:"os_version"`
+	OSArch       string   `json:"os_arch"`
+	Status       string   `json:"status"`
+	Enabled      bool     `json:"enabled"`
+	LastSeen     int64    `json:"last_seen"`
+	Tags         []string `json:"tags"`
+	Capabilities []string `json:"capabilities"`
+	CreatedAt    int64    `json:"created_at"`
 }
 
 // NodeFilter 列表过滤。
@@ -208,13 +208,13 @@ func boolInt(b bool) int {
 
 // RegistrationToken Token 记录（明文 token 仅在创建时返回一次，库中只有哈希）。
 type RegistrationToken struct {
-	ID         int64  `json:"id"`
-	TokenHash  string `json:"-"`
-	Note       string `json:"note"`
-	Status     string `json:"status"`
-	NodeID     string `json:"node_id,omitempty"`
-	ExpiresAt  int64  `json:"expires_at"`
-	CreatedAt  int64  `json:"created_at"`
+	ID        int64  `json:"id"`
+	TokenHash string `json:"-"`
+	Note      string `json:"note"`
+	Status    string `json:"status"`
+	NodeID    string `json:"node_id,omitempty"`
+	ExpiresAt int64  `json:"expires_at"`
+	CreatedAt int64  `json:"created_at"`
 }
 
 // NewRegistrationToken 生成一次性注册 Token（rt_ 前缀，256bit 随机）。
@@ -315,4 +315,3 @@ func NewNodeSecret() string {
 	_, _ = rand.Read(b)
 	return "sec_" + hex.EncodeToString(b)
 }
-

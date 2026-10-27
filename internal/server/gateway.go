@@ -15,6 +15,7 @@ import (
 
 	"github.com/aealen/moonshepherd/internal/protocol"
 	"github.com/aealen/moonshepherd/internal/store"
+	"github.com/aealen/moonshepherd/version"
 )
 
 // gateway Agent WSS 接入网关（docs/04 §2/§3；路径 /agent）。
@@ -135,11 +136,11 @@ func (g *gateway) handleRegister(conn *websocket.Conn, env *protocol.Envelope) {
 	g.srv.hub.publish("node.registered", nodeID, map[string]any{"node_id": nodeID, "name": name})
 
 	ack := &protocol.Envelope{ID: newMsgID(), Type: protocol.TypeRegisterAck, TS: time.Now().Unix(),
-		Payload: protocol.RegisterAckPayload{NodeID: nodeID, NodeSecret: secret, Config: protocol.DefaultAgentConfig()}}
+		Payload: protocol.RegisterAckPayload{NodeID: nodeID, NodeSecret: secret, Config: cfgWithVersion()}}
 	if err := g.writeEnvelope(conn, ack); err != nil {
 		return
 	}
-	g.enterSteady(conn, nodeID, protocol.DefaultAgentConfig())
+	g.enterSteady(conn, nodeID, cfgWithVersion())
 }
 
 // handleHello 每次连接的 HMAC 挑战认证（docs/04 §2.3）。
@@ -191,13 +192,20 @@ func (g *gateway) handleHello(conn *websocket.Conn, env *protocol.Envelope) {
 	g.recordNonce(p.NodeID, p.Nonce)
 
 	_ = g.srv.st.UpdateNodeStatus(ctx, p.NodeID, "online", time.Now().Unix())
-	cfg := protocol.DefaultAgentConfig()
+	cfg := cfgWithVersion()
 	ack := &protocol.Envelope{ID: newMsgID(), Type: protocol.TypeHelloAck, TS: time.Now().Unix(),
 		Payload: protocol.HelloAckPayload{ServerTime: time.Now().Unix(), Config: cfg}}
 	if err := g.writeEnvelope(conn, ack); err != nil {
 		return
 	}
 	g.enterSteady(conn, p.NodeID, cfg)
+}
+
+// cfgWithVersion 面板下行配置 + 期望版本(=面板自身版本,自更新基准)。
+func cfgWithVersion() protocol.AgentConfig {
+	cfg := protocol.DefaultAgentConfig()
+	cfg.ExpectedVersion = version.Version
+	return cfg
 }
 
 // enterSteady 认证通过后的常驻阶段：登 hub、补投 pending、进入读写循环。

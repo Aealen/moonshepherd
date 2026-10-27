@@ -22,21 +22,21 @@ type Options struct {
 	TLSCertFile string // 手动证书（可选；默认建议前置反代）
 	TLSKeyFile  string
 	DistDir     string // Agent 二进制分发目录（install.sh 下载源，docs/01 §4.2 通道③）
-	Dev         bool // 开发模式：不校验 Cookie Secure（本地 http 调试）
-	TrustProxy  bool // 信任反代安全头：X-Forwarded-Proto=https 视为已 TLS（前置 Caddy/Nginx 时开启，docs/05 §3.1）
+	Dev         bool   // 开发模式：不校验 Cookie Secure（本地 http 调试）
+	TrustProxy  bool   // 信任反代安全头：X-Forwarded-Proto=https 视为已 TLS（前置 Caddy/Nginx 时开启，docs/05 §3.1）
 }
 
 // Server 牧云面板。
 type Server struct {
-	opt      Options
-	st       *store.Store
-	box      *credenc.Box
-	hub      *agentHub
-	sessions *sessionStore  // 登录会话(Cookie)
-	terms    *panelSessions // 终端会话(Web 终端,docs/04 §8)
+	opt       Options
+	st        *store.Store
+	box       *credenc.Box
+	hub       *agentHub
+	sessions  *sessionStore    // 登录会话(Cookie)
+	terms     *panelSessions   // 终端会话(Web 终端,docs/04 §8)
 	logstream *panelLogStreams // 容器日志流(docs/04 §9)
-	limiter  *loginLimiter
-	router   http.Handler
+	limiter   *loginLimiter
+	router    http.Handler
 }
 
 // New 组装面板。
@@ -48,14 +48,14 @@ func New(opt Options, st *store.Store, box *credenc.Box) (*Server, error) {
 		opt.DistDir = "distro-bin"
 	}
 	s := &Server{
-		opt:      opt,
-		st:       st,
-		box:      box,
-		hub:      newHub(),
-		sessions: newSessionStore(),
-		terms:    newPanelSessions(),
+		opt:       opt,
+		st:        st,
+		box:       box,
+		hub:       newHub(),
+		sessions:  newSessionStore(),
+		terms:     newPanelSessions(),
 		logstream: newPanelLogStreams(),
-		limiter:  newLoginLimiter(),
+		limiter:   newLoginLimiter(),
 	}
 	s.router = s.buildRouter()
 	return s, nil
@@ -112,6 +112,7 @@ func (s *Server) buildRouter() http.Handler {
 	// 一键安装与 Agent 二进制下发（docs/01 §4.2 通道③；公开——二进制无秘密,注册仍需 Token）
 	r.Get("/install.sh", s.handleInstallSh)
 	r.Get("/dist/herd-linux-{arch}", s.handleDistBinary)
+	r.Get("/dist/herd-linux-{arch}/sha256", s.handleDistSHA256)
 
 	// REST API（docs/06）
 	r.Route("/api/v1", func(api chi.Router) {
@@ -133,6 +134,7 @@ func (s *Server) buildRouter() http.Handler {
 			auth.Post("/nodes/{id}/enable", s.handleEnableNode)
 			auth.Delete("/nodes/{id}", s.handleDeleteNode)
 			auth.Post("/nodes/{id}/probe", s.handleProbeNode)
+			auth.Post("/nodes/{id}/update", s.handleUpdateAgent)
 			auth.Get("/nodes/{id}/apps", s.handleNodeApps)
 
 			auth.Post("/nodes/{id}/commands", s.handleCreateCommand)

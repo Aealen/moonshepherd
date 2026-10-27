@@ -6,6 +6,8 @@
 package server
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -50,6 +52,25 @@ func (s *Server) handleInstallSh(w http.ResponseWriter, r *http.Request) {
 	script = strings.ReplaceAll(script, "__WS_SERVER__", wsScheme+"://"+host)
 	w.Header().Set("Content-Type", "text/x-shellscript; charset=utf-8")
 	_, _ = w.Write([]byte(script))
+}
+
+// handleDistSHA256 GET /dist/herd-linux-{arch}/sha256:纯文本校验和
+// (agent.update 下发前核对用;文件缺失 404)。
+func (s *Server) handleDistSHA256(w http.ResponseWriter, r *http.Request) {
+	arch := chi.URLParam(r, "arch")
+	if !distArchs[arch] {
+		writeErr(w, http.StatusNotFound, "not_found", "不支持的架构: "+arch)
+		return
+	}
+	path := filepath.Join(s.opt.DistDir, "herd-linux-"+arch)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		writeErr(w, http.StatusNotFound, "no_binary", "此面板构建未内嵌该架构二进制")
+		return
+	}
+	sum := sha256.Sum256(data)
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	_, _ = w.Write([]byte(hex.EncodeToString(sum[:])))
 }
 
 // installShTemplate 安装脚本模板(docs/01 §4.2):

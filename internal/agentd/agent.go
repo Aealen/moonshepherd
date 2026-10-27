@@ -171,7 +171,10 @@ func (a *Agent) register(ctx context.Context) (*credentials, error) {
 		Payload: protocol.RegisterPayload{
 			RegistrationToken: a.opt.Token, Hostname: host,
 			OS: osInfo(), AgentVersion: version.Version,
-			ProtoVersion: protocol.ProtoVersion, Capabilities: append(probe.Available(), protocol.CapPty, protocol.CapDocker),
+			ProtoVersion: protocol.ProtoVersion,
+			// 能力 + 拉起者形态(supervisor:xxx 供面板判断可否安全自更新,docs/01 §3.5)
+			Capabilities: append(probe.Available(), protocol.CapPty, protocol.CapDocker,
+				"supervisor:"+executor.DetectSupervisor()),
 		}}
 	if err := conn.WriteJSON(reg); err != nil {
 		return nil, err
