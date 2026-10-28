@@ -150,6 +150,42 @@ export function mockPlugin() {
 
         if (url === '/api/v1/audit-logs') return send(page(auditLogs, Number(q.get('page') ?? 1), Number(q.get('page_size') ?? 20)))
         if (url === '/api/v1/system/info') return send(json({ panel_version: 'main-d70fa47', go_version: 'go1.27', os: 'windows', arch: 'amd64', data_dir: './data-dev', node_count: nodes.length, online_count: 2, app_count: apps.length, uptime_s: now() - start }))
+        // MCP Keys 管理(docs/07;内存仿真)
+        const mcpKeysMock = [
+          { id: 1, name: 'claude-desktop', scopes: ['read', 'logs', 'container-ops'], node_scope: '{"mode":"custom","nodes":[{"id":"n_light"},{"id":"n_aliyun","apps":["MoonShepherd"]}]}', enabled: true, last_used: now() - 120, created_at: now() - 86400 * 3 },
+          { id: 2, name: '测试机专用', scopes: ['read', 'exec', 'files'], node_scope: '{"mode":"custom","nodes":[{"id":"n_aliyun"}]}', enabled: true, last_used: now() - 3600, created_at: now() - 86400 },
+          { id: 3, name: '巡检-只读', scopes: ['read'], node_scope: 'all', enabled: false, last_used: 0, created_at: now() - 86400 * 7 },
+        ]
+        if (url === '/api/v1/mcp/keys' && req.method === 'GET') return send(json({ data: mcpKeysMock }))
+        if (url === '/api/v1/mcp/keys' && req.method === 'POST') {
+          let body = ''
+          req.on('data', (c) => (body += c))
+          req.on('end', () => {
+            const p = JSON.parse(body || '{}')
+            mcpKeysMock.unshift({ id: Date.now(), name: p.name || 'new-key', scopes: p.scopes ?? [], node_scope: p.node_scope ?? 'all', enabled: true, last_used: 0, created_at: now() })
+            send(json({ id: mcpKeysMock[0].id, name: mcpKeysMock[0].name, scopes: mcpKeysMock[0].scopes, node_scope: mcpKeysMock[0].node_scope, key: 'mcp_MockPlainTextOnce_' + randomUUID().replaceAll('-', '').slice(0, 24) }, 201, { 'Cache-Control': 'no-store' }))
+          })
+          return
+        }
+        const mMcpKey = url.match(/^\/api\/v1\/mcp\/keys\/(\d+)$/)
+        if (mMcpKey && req.method === 'PATCH') {
+          let body = ''
+          req.on('data', (c) => (body += c))
+          req.on('end', () => {
+            const k = mcpKeysMock.find((x) => x.id === Number(mMcpKey[1]))
+            if (k) { try { const p = JSON.parse(body); if (p.enabled !== undefined) k.enabled = p.enabled; if (p.name) k.name = p.name } catch { } }
+            send(json({ ok: true }))
+          })
+          return
+        }
+        if (mMcpKey && req.method === 'DELETE') {
+          const i = mcpKeysMock.findIndex((x) => x.id === Number(mMcpKey[1]))
+          if (i >= 0) mcpKeysMock.splice(i, 1)
+          return send(json({ ok: true }))
+        }
+        // /mcp 端点(演示:任何 Bearer 都放行,回 tools/list 语义)
+        if (url === '/api/v1/../mcp' || url === '/mcp') return send(json({ jsonrpc: '2.0', id: 1, result: { tools: [] } }))
+
         // 文件管理:file/op 内存仿真(mock 简化——REST 直接返回 ack 结果体,不走事件)
         const mFileOp = url.match(/^\/api\/v1\/nodes\/(n_\w+)\/file\/op$/)
         if (mFileOp && req.method === 'POST') {

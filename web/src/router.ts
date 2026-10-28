@@ -12,6 +12,7 @@ export const router = createRouter({
     { path: '/nodes/:id/configs/:targetId', component: () => import('./views/ConfigVersion.vue') },
     { path: '/system', component: () => import('./views/System.vue') },
     { path: '/audit', component: () => import('./views/Audit.vue') },
+    { path: '/mcp', component: () => import('./views/McpKeys.vue') },
   ],
 })
 

@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/aealen/moonshepherd/internal/credenc"
+	"github.com/aealen/moonshepherd/internal/mcp"
 	"github.com/aealen/moonshepherd/internal/store"
 	"github.com/aealen/moonshepherd/web"
 )
@@ -35,6 +36,8 @@ type Server struct {
 	sessions  *sessionStore    // 登录会话(Cookie)
 	terms     *panelSessions   // 终端会话(Web 终端,docs/04 §8)
 	logstream *panelLogStreams // 容器日志流(docs/04 §9)
+	fileBridge *fileBridgeT    // MCP 文件同步等待桥
+	mcpSrv *mcp.Server        // MCP 服务(docs/07)
 	limiter   *loginLimiter
 	router    http.Handler
 }
@@ -55,6 +58,7 @@ func New(opt Options, st *store.Store, box *credenc.Box) (*Server, error) {
 		sessions:  newSessionStore(),
 		terms:     newPanelSessions(),
 		logstream: newPanelLogStreams(),
+		fileBridge: newFileBridge(),
 		limiter:   newLoginLimiter(),
 	}
 	s.router = s.buildRouter()
@@ -111,6 +115,9 @@ func (s *Server) buildRouter() http.Handler {
 
 	// 一键安装与 Agent 二进制下发（docs/01 §4.2 通道③；公开——二进制无秘密,注册仍需 Token）
 	r.Get("/install.sh", s.handleInstallSh)
+
+	// MCP 入口(Key 自认证,不走会话;docs/07 §6)
+	r.Post("/mcp", s.mcpSrv.HandleHTTP)
 	r.Get("/dist/herd-linux-{arch}", s.handleDistBinary)
 	r.Get("/dist/herd-linux-{arch}/sha256", s.handleDistSHA256)
 
@@ -142,6 +149,10 @@ func (s *Server) buildRouter() http.Handler {
 			auth.Post("/nodes/{id}/logstream", s.handleOpenLogStream)
 			auth.Post("/nodes/{id}/file/read", s.handleReadFile)
 			auth.Post("/nodes/{id}/file/op", s.handleFileOp)
+			auth.Get("/mcp/keys", s.handleMcpListKeys)
+			auth.Post("/mcp/keys", s.handleMcpCreateKey)
+			auth.Patch("/mcp/keys/{id}", s.handleMcpUpdateKey)
+			auth.Delete("/mcp/keys/{id}", s.handleMcpDeleteKey)
 			auth.Post("/nodes/{id}/file/upload", s.handleFileUpload)
 			auth.Delete("/nodes/{id}/logstream/{sid}", s.handleCloseLogStream)
 			auth.Delete("/nodes/{id}/sessions/{sid}", s.handleCloseTerminal)

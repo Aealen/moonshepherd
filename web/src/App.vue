@@ -7,7 +7,7 @@ import {
   darkTheme, type MenuOption, type GlobalThemeOverrides,
 } from 'naive-ui'
 import { RouterLink, RouterView } from 'vue-router'
-import { ServerOutline, GridOutline, TerminalOutline, ShieldCheckmarkOutline, SettingsOutline } from '@vicons/ionicons5'
+import { ServerOutline, GridOutline, TerminalOutline, ShieldCheckmarkOutline, SettingsOutline, ExtensionPuzzleOutline } from '@vicons/ionicons5'
 import { NIcon } from 'naive-ui'
 import { onEvent, connectEvents } from './api/ws'
 import logoUrl from './assets/logo-64.png'
@@ -80,6 +80,10 @@ const menuOptions = computed<MenuOption[]>(() => [
     key: 'audit', icon: renderIcon(ShieldCheckmarkOutline),
   },
   {
+    label: () => h(RouterLink, { to: '/mcp' }, { default: () => 'MCP Keys' }),
+    key: 'mcp', icon: renderIcon(ExtensionPuzzleOutline),
+  },
+  {
     label: () => h(RouterLink, { to: '/system' }, { default: () => '系统' }),
     key: 'system', icon: renderIcon(SettingsOutline),
   },
@@ -89,6 +93,7 @@ const activeMenu = computed(() => {
   if (route.path.startsWith('/apps')) return 'apps'
   if (route.path.startsWith('/commands')) return 'commands'
   if (route.path.startsWith('/audit')) return 'audit'
+  if (route.path.startsWith('/mcp')) return 'mcp'
   if (route.path.startsWith('/system')) return 'system'
   return 'nodes'
 })
