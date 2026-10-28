@@ -130,3 +130,15 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_audit_time ON audit_logs (created_at);
+
+-- MCP Keys(docs/07 §8):hash 存储,明文仅创建时返回一次
+CREATE TABLE IF NOT EXISTS mcp_keys (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT NOT NULL UNIQUE,
+    key_hash    TEXT NOT NULL UNIQUE,        -- sha256 hex
+    scopes      TEXT NOT NULL DEFAULT '[]',  -- JSON: ["read","logs",...]
+    node_scope  TEXT NOT NULL DEFAULT 'all', -- 'all' 或 JSON 数组 ["n_xxx"]
+    enabled     INTEGER NOT NULL DEFAULT 1,
+    last_used   INTEGER NOT NULL DEFAULT 0,
+    created_at  INTEGER NOT NULL
+);
