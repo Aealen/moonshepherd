@@ -77,9 +77,12 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.name }}
+          # sha 标签前缀:push 分支用 <branch>-;push tag 事件无 branch,{{branch}} 渲染为空
+          # 会生成非法标签 "image:-94e8f0d"(v0.1.0 曾因此失败),tag 事件改用 v 前缀
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,prefix={{branch}}-
+            type=sha,prefix={{branch}}-,enable=${{ github.ref_type == 'branch' }}
+            type=sha,prefix=v-,enable=${{ github.ref_type == 'tag' }}
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
 
