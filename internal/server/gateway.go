@@ -192,6 +192,10 @@ func (g *gateway) handleHello(conn *websocket.Conn, env *protocol.Envelope) {
 	g.recordNonce(p.NodeID, p.Nonce)
 
 	_ = g.srv.st.UpdateNodeStatus(ctx, p.NodeID, "online", time.Now().Unix())
+	// hello 携带版本/能力(v0.1.0+):Agent 换二进制重连即刷新节点表;老 Agent 缺字段保留库中原值
+	if p.AgentVersion != "" || p.ProtoVersion != "" || len(p.Capabilities) > 0 {
+		_ = g.srv.st.RefreshNodeAgent(ctx, p.NodeID, p.AgentVersion, p.ProtoVersion, p.Capabilities)
+	}
 	cfg := cfgWithVersion()
 	ack := &protocol.Envelope{ID: newMsgID(), Type: protocol.TypeHelloAck, TS: time.Now().Unix(),
 		Payload: protocol.HelloAckPayload{ServerTime: time.Now().Unix(), Config: cfg}}

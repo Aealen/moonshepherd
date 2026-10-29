@@ -24,6 +24,8 @@ const nodes = [
   mkNode('n_aliyun', '阿里云·杭州/web-01', 'iZbp1dbljj5cgoshjm7xdjZ', 'Alibaba Cloud Linux', '3', 'amd64', 'online'),
   mkNode('n_office', '办公室演示机', 'DESKTOP-DEMO01', 'Ubuntu', '24.04', 'amd64', 'offline'),
 ]
+// 演示待升级态:灯塔版本落后于面板 main-d70fa47
+nodes[0].agent_version = 'main-9c1e2ab'
 
 // 心跳历史:在线节点 60 个点,cpu/mem 有波形
 function mkMetrics(nodeID, base) {
@@ -111,7 +113,10 @@ export function mockPlugin() {
           const st = q.get('status')
           let list = nodes
           if (st) list = list.filter((n) => n.status === st)
-          return send(page(list, Number(q.get('page') ?? 1), Number(q.get('page_size') ?? 20), list.length))
+          const body = page(list, Number(q.get('page') ?? 1), Number(q.get('page_size') ?? 20), list.length)
+          // 与真面板对齐:列表响应带在线/离线统计头(顶栏 App.vue 读取)
+          const onlineCount = nodes.filter((n) => n.status === 'online').length
+          return send({ ...body, headers: { ...body.headers, 'X-Total-Online': String(onlineCount), 'X-Total-Offline': String(nodes.length - onlineCount) } })
         }
         const mNode = url.match(/^\/api\/v1\/nodes\/(n_\w+)$/)
         if (mNode && req.method === 'GET') {
