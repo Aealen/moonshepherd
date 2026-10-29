@@ -134,6 +134,29 @@ func (s *Store) UpdateNodeStatus(ctx context.Context, id, status string, seen in
 	return err
 }
 
+// RefreshNodeAgent hello 携带的版本/能力落库(Agent 换二进制重连后调用);
+// 空字段不覆盖,老 Agent 上报缺字段时保留库中原值。
+func (s *Store) RefreshNodeAgent(ctx context.Context, id string, agentVersion, protoVersion string, capabilities []string) error {
+	if agentVersion != "" {
+		if _, err := s.DB.ExecContext(ctx, "UPDATE nodes SET agent_version = ? WHERE id = ?", agentVersion, id); err != nil {
+			return err
+		}
+	}
+	if protoVersion != "" {
+		if _, err := s.DB.ExecContext(ctx, "UPDATE nodes SET proto_version = ? WHERE id = ?", protoVersion, id); err != nil {
+			return err
+		}
+	}
+	if len(capabilities) > 0 {
+		b, _ := json.Marshal(capabilities)
+		if _, err := s.DB.ExecContext(ctx, "UPDATE nodes SET capabilities = ? WHERE id = ?", string(b), id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+
 // TouchNode 心跳只刷新 last_seen（status 已是 online）。
 func (s *Store) TouchNode(ctx context.Context, id string) error {
 	_, err := s.DB.ExecContext(ctx, "UPDATE nodes SET last_seen = ?, status = 'online' WHERE id = ?", now(), id)

@@ -3,13 +3,15 @@ import { h, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   NDataTable, NTag, NButton, NInput, NSelect, NSpace, NModal, NForm, NFormItem,
-  NPagination, NEmpty, NPopconfirm, useMessage, type DataTableColumns,
+  NPagination, NEmpty, NPopconfirm, NPopover,
+  useDialog, useMessage, type DataTableColumns,
 } from 'naive-ui'
 import { api, fmtAgo, fmtTime, type Node, type Page, type RegistrationToken } from '../api'
 import { onEvent } from '../api/ws'
 
 const router = useRouter()
 const message = useMessage()
+const dialog = useDialog()
 
 const nodes = ref<Node[]>([])
 const total = ref(0)
@@ -20,6 +22,8 @@ const statusFilter = ref<string | null>(null)
 const query = ref('')
 // 面板自身版本(升级比对基准;/system/info 面板卡片同源)
 const panelVersion = ref('')
+// ⋯ 菜单当前展开的行(受控关闭)
+const menuOpenRow = ref('')
 
 // updateAgent 触发自更新(POST /nodes/{id}/update);成败以重连后版本号为准
 async function updateAgent(row: Node) {
@@ -43,6 +47,43 @@ const statusTag = (s: string, enabled: boolean) => {
   return h('span', { class: 'node-state offline' }, [h('i'), '离线'])
 }
 
+// ⋯ 下拉:删除走 dialog 二次确认(输入节点名),下拉面板内嵌确认框交互不佳
+function confirmDeleteNode(row: Node) {
+  dialog.warning({
+    title: '删除节点',
+    content: `删除「${row.name}」将清除其应用清单与配置目标(指令审计保留),该操作不可恢复。确定删除?`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: () => deleteNode(row),
+  })
+}
+
+// ⋯ 菜单:低频/危险操作收拢,保持操作列一行放下;选择走统一分发
+function moreMenuOptions(row: Node): { key: string; label: string }[] {
+  const ops: { key: string; label: string }[] = []
+  ops.push(row.enabled ? { key: 'disable', label: '禁用' } : { key: 'enable', label: '解禁' })
+  ops.push({ key: 'delete', label: '删除' })
+  return ops
+}
+
+function onMoreSelect(key: string, row: Node) {
+  if (key === 'disable') confirmToggle(row, false)
+  else if (key === 'enable') toggleNode(row, true)
+  else if (key === 'delete') confirmDeleteNode(row)
+}
+
+function confirmToggle(row: Node, enable: boolean) {
+  dialog.warning({
+    title: enable ? '解禁节点' : '禁用节点',
+    content: enable
+      ? `解禁后「${row.name}」的 Agent 即可重新连接,确定?`
+      : `禁用后「${row.name}」的 Agent 将立即断开且无法重连,确定?`,
+    positiveText: enable ? '解禁' : '禁用',
+    negativeText: '取消',
+    onPositiveClick: () => toggleNode(row, enable),
+  })
+}
+
 const columns: DataTableColumns<Node> = [
   {
     title: '节点', key: 'name', minWidth: 180,
@@ -53,13 +94,13 @@ const columns: DataTableColumns<Node> = [
   },
   { title: '状态', key: 'status', width: 90, render: (row) => statusTag(row.status, row.enabled) },
   {
-    title: 'Agent', key: 'agent_version', width: 120,
+    title: 'Agent', key: 'agent_version', width: 128,
     render: (row) => {
       if (!row.agent_version) return h('span', { class: 'muted' }, '—')
       const outdated = row.status === 'online' && panelVersion.value && row.agent_version !== panelVersion.value
-      return h('span', { class: 'mono ' + (outdated ? 'ver-stale' : 'muted') }, [
-        row.agent_version,
-        outdated ? h('span', { class: 'ver-badge', title: '待升级,操作列可更新' }, '待升级') : null,
+      return h('div', { class: 'ver-cell' }, [
+        h('span', { class: 'mono ' + (outdated ? 'ver-stale' : 'muted') }, row.agent_version),
+        outdated ? h('span', { class: 'ver-badge', title: `面板 ${panelVersion.value},操作列可一键升级` }, '待升级') : null,
       ])
     },
   },
@@ -72,27 +113,22 @@ const columns: DataTableColumns<Node> = [
   { title: '最后心跳', key: 'last_seen', width: 120, render: (row) => h('span', { class: 'muted' }, fmtAgo(row.last_seen)) },
   {
     title: '操作', key: 'actions', width: 150,
-    render: (row) => h(NSpace, { size: 6 }, {
-      default: () => [
-        h(NButton, { size: 'tiny', quaternary: true, type: 'primary', onClick: () => router.push(`/nodes/${row.id}`) }, { default: () => '详情' }),
-        (row.status === 'online' && panelVersion.value && row.agent_version && row.agent_version !== panelVersion.value && !(row.capabilities ?? []).includes('supervisor:unknown'))
-          ? h(NPopconfirm, { onPositiveClick: () => updateAgent(row) }, {
-              trigger: () => h(NButton, { size: 'tiny', quaternary: true, type: 'info' }, { default: () => '升级' }),
-              default: () => `将 Agent 从 ${row.agent_version} 更新到 ${panelVersion.value}。更新中连接会中断 1~2 分钟,失败自动回滚旧版(不会失联)。确定?`,
-            })
-          : null,
-        row.enabled
-          ? h(NPopconfirm, { onPositiveClick: () => toggleNode(row, false) }, {
-              trigger: () => h(NButton, { size: 'tiny', quaternary: true, type: 'warning' }, { default: () => '禁用' }),
-              default: () => '禁用后 Agent 将立即断开且无法重连，确定？',
-            })
-          : h(NButton, { size: 'tiny', quaternary: true, type: 'success', onClick: () => toggleNode(row, true) }, { default: () => '解禁' }),
-        h(NPopconfirm, { onPositiveClick: () => deleteNode(row) }, {
-          trigger: () => h(NButton, { size: 'tiny', quaternary: true, type: 'error' }, { default: () => '删除' }),
-          default: () => `删除节点「${row.name}」将清除其应用清单与配置目标（指令审计保留）。输入节点名确认的操作在确认框内完成。确定删除？`,
-        }),
-      ],
-    }),
+    render: (row) => h('div', { style: 'display:flex; align-items:center; gap:6px' }, [
+      h(NButton, { size: 'tiny', quaternary: true, type: 'primary', onClick: () => router.push(`/nodes/${row.id}`) }, { default: () => '详情' }),
+      (row.status === 'online' && panelVersion.value && row.agent_version && row.agent_version !== panelVersion.value && !(row.capabilities ?? []).includes('supervisor:unknown'))
+        ? h(NPopconfirm, { onPositiveClick: () => updateAgent(row) }, {
+            trigger: () => h(NButton, { size: 'tiny', quaternary: true, type: 'info' }, { default: () => '升级' }),
+            default: () => `将 Agent 从 ${row.agent_version} 更新到 ${panelVersion.value}。更新中连接会中断 1~2 分钟,失败自动回滚旧版(不会失联)。确定?`,
+          })
+        : null,
+      h(NPopover, { trigger: 'click', placement: 'bottom-end', showArrow: false, raw: true,
+        show: menuOpenRow.value === row.id, 'onUpdate:show': (v: boolean) => { menuOpenRow.value = v ? row.id : '' } }, {
+        trigger: () => h(NButton, { size: 'tiny', quaternary: true }, { default: () => '⋯' }),
+        default: () => h('div', { class: 'row-menu' }, moreMenuOptions(row).map((op) =>
+          h('div', { class: 'row-menu-item' + (op.key === 'delete' ? ' danger' : ''),
+            onClick: () => { menuOpenRow.value = ''; onMoreSelect(op.key, row) } }, op.label))),
+      }),
+    ]),
   },
 ]
 
@@ -209,8 +245,10 @@ onMounted(() => {
 onUnmounted(() => off?.())
 </script>
 
-<style scoped>
-/* 待升级版本徽章 */
+<style>
+/* Agent 版本列 + 行菜单:数据表 render 函数创建的元素不带 scoped 属性,
+   样式须放非 scoped 块才能命中(类名沿用,仅本页使用) */
+.ver-cell { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; padding: 2px 0; }
 .ver-stale { color: #f2c97d; }
 .ver-badge.warn {
   background: rgba(157, 165, 180, 0.1);
@@ -218,15 +256,36 @@ onUnmounted(() => off?.())
   border-color: rgba(157, 165, 180, 0.3);
 }
 .ver-badge {
-  margin-left: 7px;
   font-size: 10.5px;
+  line-height: 1;
   font-family: "Inter", system-ui, sans-serif;
-  padding: 1px 7px;
+  padding: 3px 8px;
   border-radius: 99px;
   background: rgba(242, 201, 125, 0.12);
   color: #f2c97d;
   border: 1px solid rgba(242, 201, 125, 0.3);
 }
+
+/* ⋯ 行菜单(raw popover 自带样式):与全局暗夜牧场风格一致 */
+.row-menu {
+  min-width: 108px;
+  padding: 5px;
+  background: #1c2333;
+  border: 1px solid rgba(110, 231, 216, 0.14);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+.row-menu-item {
+  padding: 7px 12px;
+  border-radius: 7px;
+  font-size: 12.5px;
+  cursor: pointer;
+  color: #c3cad9;
+  transition: background 0.15s, color 0.15s;
+}
+.row-menu-item:hover { background: rgba(110, 231, 216, 0.1); color: #99f0e4; }
+.row-menu-item.danger { color: #ff8f9a; }
+.row-menu-item.danger:hover { background: rgba(255, 143, 154, 0.12); color: #ff8f9a; }
 </style>
 
 <template>
@@ -295,8 +354,9 @@ onUnmounted(() => off?.())
   </div>
 </template>
 
-<style scoped>
-/* 节点状态:圆点呼吸灯胶囊(替代 tag) */
+<style>
+/* 节点状态:圆点呼吸灯胶囊(替代 tag)。
+   非 scoped:render 函数元素不带 scoped 属性,此前样式在列表页一直未生效(圆点丢失) */
 .node-state {
   display: inline-flex;
   align-items: center;

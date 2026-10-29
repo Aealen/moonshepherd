@@ -121,11 +121,16 @@ type RegisterAckPayload struct {
 }
 
 // HelloPayload 每次连接的第一条消息：HMAC 挑战认证（docs/04 §2.3）。
+// AgentVersion/ProtoVersion/Capabilities 可选上报(v0.1.0+):Agent 换二进制后重连即
+// 刷新面板节点表(版本/能力不再停留注册时旧值);老 Agent 不带,面板保留库中原值。
 type HelloPayload struct {
 	NodeID string `json:"node_id"`
 	TS     int64  `json:"ts"`
 	Nonce  string `json:"nonce"`
 	Sig    string `json:"sig"`
+	AgentVersion string   `json:"agent_version,omitempty"`
+	ProtoVersion string   `json:"proto_version,omitempty"`
+	Capabilities []string `json:"capabilities,omitempty"`
 }
 
 // HelloAckPayload 面板回执，可捎带运行配置热更新。

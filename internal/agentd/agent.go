@@ -224,13 +224,16 @@ func (a *Agent) runOnce(ctx context.Context, creds *credentials) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	// hello：HMAC 挑战（docs/04 §2.3）
+	// hello：HMAC 挑战（docs/04 §2.3）;顺带上报版本与能力,换二进制重连即刷新面板节点表
 	nonce := randHex(16)
 	ts := time.Now().Unix()
 	hello := &protocol.Envelope{ID: newID(), Type: protocol.TypeHello, TS: ts,
 		Payload: protocol.HelloPayload{
 			NodeID: creds.NodeID, TS: ts, Nonce: nonce,
 			Sig: protocol.HelloSig(creds.NodeSecret, creds.NodeID, ts, nonce),
+			AgentVersion: version.Version, ProtoVersion: protocol.ProtoVersion,
+			Capabilities: append(probe.Available(), protocol.CapPty, protocol.CapDocker,
+				"supervisor:"+executor.DetectSupervisor()),
 		}}
 	if err := conn.WriteJSON(hello); err != nil {
 		conn.Close()
