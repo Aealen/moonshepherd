@@ -21,11 +21,12 @@ const collapsed = ref(false)
 // 主题:暗色画廊 —— 单色分层表面 + 单一牧绿强调 + 胶囊控件
 const themeOverrides: GlobalThemeOverrides = {
   common: {
-    primaryColor: '#63d3a6',
-    primaryColorHover: '#8ee6c3',
-    primaryColorPressed: '#4bb98d',
-    primaryColorSuppl: '#8ee6c3',
-    infoColor: '#8fb8a8',
+    primaryColor: '#edf2ef',
+    primaryColorHover: '#ffffff',
+    primaryColorPressed: '#d3ddd6',
+    primaryColorSuppl: '#ffffff',
+    infoColor: '#a8b5ae',
+    successColor: '#8fb8a8',
     warningColor: '#e3c47f',
     errorColor: '#ef9d93',
     borderRadius: '10px',
@@ -52,13 +53,13 @@ const themeOverrides: GlobalThemeOverrides = {
   },
   Menu: {
     borderRadius: '10px',
-    itemColorActive: 'rgba(99, 211, 166, 0.10)',
+    itemColorActive: 'rgba(240, 244, 241, 0.08)',
     itemColorHover: 'rgba(255, 255, 255, 0.04)',
-    itemTextColorActive: '#8ee6c3',
-    itemTextColorActiveHover: '#8ee6c3',
-    itemIconColorActive: '#8ee6c3',
-    itemTextColorChildActive: '#8ee6c3',
-    itemIconColorChildActive: '#8ee6c3',
+    itemTextColorActive: '#ffffff',
+    itemTextColorActiveHover: '#ffffff',
+    itemIconColorActive: '#ffffff',
+    itemTextColorChildActive: '#ffffff',
+    itemIconColorChildActive: '#ffffff',
   },
   Tag: { borderRadius: '999px' },
   Input: { borderRadius: '10px' },
@@ -179,13 +180,14 @@ if (!isLogin.value) {
               </div>
               <n-dropdown :options="userMenu" @select="logout">
                 <n-button quaternary size="small" style="gap:9px; padding:0 10px;">
-                  <n-avatar round :size="26" style="background:linear-gradient(135deg,#63d3a6,#4a7a68); color:#0d100f; font-weight:700">M</n-avatar>
+                  <n-avatar round :size="26" style="background:linear-gradient(135deg,#f2f5f3,#9fb0a7); color:#101312; font-weight:700">M</n-avatar>
                   <span style="font-size:13px">admin</span>
                 </n-button>
               </n-dropdown>
             </n-layout-header>
-            <n-layout-content style="height:calc(100vh - 52px); overflow:auto">
-              <router-view :key="route.fullPath" />
+            <n-layout-content style="height:calc(100vh - 52px); overflow:auto; position:relative">
+              <div class="starfield" aria-hidden="true"></div>
+              <router-view :key="route.fullPath" style="position:relative; z-index:1" />
             </n-layout-content>
           </n-layout>
         </n-layout>
@@ -235,9 +237,9 @@ if (!isLogin.value) {
   font-family: "JetBrains Mono", Consolas, monospace;
 }
 .stat-chip.online {
-  color: #8ee6c3;
-  background: rgba(99, 211, 166, 0.09);
-  border: 1px solid rgba(99, 211, 166, 0.22);
+  color: #edf2ef;
+  background: rgba(240, 244, 241, 0.07);
+  border: 1px solid rgba(240, 244, 241, 0.2);
 }
 .stat-chip.offline {
   color: #e3c47f;
@@ -250,6 +252,7 @@ if (!isLogin.value) {
 }
 .stat-chip.online .stat-dot {
   background: #63d3a6;
+  box-shadow: 0 0 6px rgba(99, 211, 166, 0.6);
 }
 .pulse { animation: breathe 2.4s ease-in-out infinite; }
 @keyframes breathe {

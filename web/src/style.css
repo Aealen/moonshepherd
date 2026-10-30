@@ -14,14 +14,15 @@
   --line: #272e2c;        /* 分隔线 */
   --line-strong: #333c39;
 
-  /* 单一强调色:牧绿(柔和、低饱和,接近截图 magpie 的绿) */
-  --moon: #63d3a6;
-  --moon-strong: #8ee6c3;
-  --moon-dim: rgba(99, 211, 166, 0.10);
-  --moon-line: rgba(99, 211, 166, 0.28);
-  --accent: #8fb8a8;      /* 信息:灰绿 */
+  /* 单一强调色:素白(单色画廊),绿仅保留给状态点 */
+  --moon: #edf2ef;
+  --moon-strong: #ffffff;
+  --moon-dim: rgba(240, 244, 241, 0.08);
+  --moon-line: rgba(240, 244, 241, 0.25);
+  --accent: #a8b5ae;      /* 信息:灰 */
   --gold: #e3c47f;        /* 警示:沙金 */
   --rose: #ef9d93;        /* 危险:陶粉 */
+  --status-ok: #63d3a6;   /* 状态绿:只用于在线/运行中小点 */
   --text-1: #eef2f0;      /* 主文本 */
   --text-2: #a3ada8;      /* 次文本 */
   --text-3: #66706b;      /* 弱文本 */
@@ -113,6 +114,41 @@ body {
   color: var(--moon-strong);
 }
 
+/* 夜空星点层:纯 CSS,铺在页面最底(供 .page 所在内容区引用) */
+.starfield {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(1px 1px at 12% 22%, rgba(255, 255, 255, 0.50) 50%, transparent 51%),
+    radial-gradient(1px 1px at 28% 68%, rgba(255, 255, 255, 0.36) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 41% 12%, rgba(255, 255, 255, 0.60) 50%, transparent 51%),
+    radial-gradient(1px 1px at 55% 44%, rgba(255, 255, 255, 0.32) 50%, transparent 51%),
+    radial-gradient(1px 1px at 67% 81%, rgba(255, 255, 255, 0.42) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 74% 28%, rgba(255, 255, 255, 0.55) 50%, transparent 51%),
+    radial-gradient(1px 1px at 83% 58%, rgba(255, 255, 255, 0.34) 50%, transparent 51%),
+    radial-gradient(1px 1px at 91% 9%, rgba(255, 255, 255, 0.46) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 8% 86%, rgba(255, 255, 255, 0.38) 50%, transparent 51%),
+    radial-gradient(1px 1px at 34% 92%, rgba(255, 255, 255, 0.32) 50%, transparent 51%),
+    radial-gradient(1px 1px at 49% 74%, rgba(255, 255, 255, 0.28) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 62% 57%, rgba(255, 255, 255, 0.40) 50%, transparent 51%),
+    radial-gradient(1px 1px at 21% 41%, rgba(255, 255, 255, 0.30) 50%, transparent 51%),
+    radial-gradient(1px 1px at 37% 55%, rgba(255, 255, 255, 0.26) 50%, transparent 51%),
+    radial-gradient(1px 1px at 58% 91%, rgba(255, 255, 255, 0.30) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 88% 76%, rgba(255, 255, 255, 0.44) 50%, transparent 51%),
+    radial-gradient(1px 1px at 5% 52%, rgba(255, 255, 255, 0.28) 50%, transparent 51%),
+    radial-gradient(1px 1px at 96% 38%, rgba(255, 255, 255, 0.36) 50%, transparent 51%),
+    radial-gradient(1px 1px at 45% 30%, rgba(255, 255, 255, 0.24) 50%, transparent 51%),
+    radial-gradient(1px 1px at 70% 6%, rgba(255, 255, 255, 0.32) 50%, transparent 51%);
+  background-size: 640px 640px, 640px 640px, 640px 640px, 640px 640px, 640px 640px, 640px 640px, 640px 640px, 640px 640px, 640px 640px, 640px 640px, 640px 640px, 640px 640px, 533px 533px, 533px 533px, 533px 533px, 533px 533px, 480px 480px, 480px 480px, 480px 480px, 480px 480px;
+  animation: star-breathe 7s ease-in-out infinite;
+}
+@keyframes star-breathe {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
 /* 悬浮反馈:边框提亮而非发光 */
 .glow-hover { transition: border-color 0.18s ease, background 0.18s ease; }
 .glow-hover:hover { border-color: var(--moon-line); }
@@ -161,9 +197,9 @@ body {
 .moon {
   position: absolute; top: 9%; right: 12%;
   width: 130px; height: 130px; border-radius: 50%;
-  background: radial-gradient(circle at 38% 35%, #f5fbf0 0%, #dfe8d2 45%, #b9c6ad 100%);
-  box-shadow: 0 0 70px 22px rgba(99, 211, 166, 0.10), 0 0 160px 60px rgba(99, 211, 166, 0.05);
-  opacity: 0.8;
+  background: radial-gradient(circle at 38% 35%, #ffffff 0%, #e6ebe8 45%, #b9c2bc 100%);
+  box-shadow: 0 0 70px 22px rgba(255, 255, 255, 0.10), 0 0 160px 60px rgba(255, 255, 255, 0.05);
+  opacity: 0.85;
 }
 .star {
   position: absolute; border-radius: 50%; background: #cfd8d3;
@@ -180,7 +216,7 @@ body {
   border-color: var(--line) !important;
 }
 .n-data-table .n-data-table-tr:hover .n-data-table-td {
-  background: rgba(99, 211, 166, 0.045) !important;
+  background: rgba(240, 244, 241, 0.035) !important;
 }
 .n-data-table .n-data-table-th {
   background: rgba(255, 255, 255, 0.02) !important;

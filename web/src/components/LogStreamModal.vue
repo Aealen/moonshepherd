@@ -36,7 +36,7 @@ function ensureTerm() {
   term = new Terminal({
     fontSize: 12.5,
     fontFamily: '"Cascadia Mono", "JetBrains Mono", Consolas, monospace',
-    theme: { background: '#0c0f0e', foreground: '#c6d0ca', cursor: '#63d3a6', selectionBackground: '#2e4a41' },
+    theme: { background: '#0c0f0e', foreground: '#c6d0ca', cursor: '#edf2ef', selectionBackground: '#3a4a42' },
     scrollback: 10000,
     disableStdin: true, // 只读日志
   })
@@ -155,9 +155,9 @@ void sendClient
 .live-dot {
   display: inline-block;
   width: 7px; height: 7px; border-radius: 50%;
-  background: #63d3a6;
+  background: #edf2ef;
   margin-right: 5px;
-  box-shadow: 0 0 7px rgba(99, 211, 166, 0.8);
+  box-shadow: 0 0 7px rgba(240, 244, 241, 0.7);
   animation: log-breathe 2.2s ease-in-out infinite;
 }
 @keyframes log-breathe {

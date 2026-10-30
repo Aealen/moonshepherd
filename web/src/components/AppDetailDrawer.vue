@@ -185,7 +185,7 @@ const envCols = [
 
 <style scoped>
 .conf-path { cursor: pointer; }
-.conf-path:hover { color: #8ee6c3; text-decoration: underline; }
+.conf-path:hover { color: #edf2ef; text-decoration: underline; }
 
 /* 中间件配置候选条目:主配置带青色左边条 */
 .conf-item {
@@ -199,8 +199,8 @@ const envCols = [
   background: rgba(255, 255, 255, 0.02);
 }
 .conf-item.main {
-  border-color: rgba(99, 211, 166, 0.25);
-  background: rgba(99, 211, 166, 0.045);
-  box-shadow: inset 3px 0 0 rgba(99, 211, 166, 0.55);
+  border-color: rgba(240, 244, 241, 0.25);
+  background: rgba(240, 244, 241, 0.045);
+  box-shadow: inset 3px 0 0 rgba(240, 244, 241, 0.55);
 }
 </style>

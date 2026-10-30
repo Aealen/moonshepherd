@@ -271,7 +271,7 @@ onUnmounted(() => off?.())
   min-width: 108px;
   padding: 5px;
   background: #1c2333;
-  border: 1px solid rgba(99, 211, 166, 0.14);
+  border: 1px solid rgba(240, 244, 241, 0.14);
   border-radius: 10px;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
 }
@@ -283,7 +283,7 @@ onUnmounted(() => off?.())
   color: #c3cad9;
   transition: background 0.15s, color 0.15s;
 }
-.row-menu-item:hover { background: rgba(99, 211, 166, 0.1); color: #8ee6c3; }
+.row-menu-item:hover { background: rgba(240, 244, 241, 0.1); color: #edf2ef; }
 .row-menu-item.danger { color: #ef9d93; }
 .row-menu-item.danger:hover { background: rgba(239, 157, 147, 0.12); color: #ef9d93; }
 </style>
@@ -369,9 +369,9 @@ onUnmounted(() => off?.())
   width: 8px; height: 8px; border-radius: 50%;
   background: #66706b;
 }
-.node-state.online { color: #8ee6c3; }
+.node-state.online { color: #edf2ef; }
 .node-state.online i {
-  background: #63d3a6;
+  background: #63d3a6; /* 状态绿:仅在线小点保留 */
   box-shadow: 0 0 8px rgba(99, 211, 166, 0.7);
 }
 .node-state.offline { color: #a3ada8; }

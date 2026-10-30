@@ -275,9 +275,9 @@ NaN
 .fm-tree { width: 235px; flex-shrink: 0; padding: 10px 8px; overflow: auto; }
 .fm-tree-title { font-size: 12px; color: #66706b; letter-spacing: 1px; margin: 0 0 8px 6px; }
 .fm-crumbs { display: flex; gap: 4px; align-items: center; font-size: 13px; flex-wrap: wrap; }
-.crumb { cursor: pointer; color: #8ee6c3; }
+.crumb { cursor: pointer; color: #edf2ef; }
 .crumb:hover { text-decoration: underline; }
 .fm-drop { flex: 1; display: flex; flex-direction: column; position: relative; border: 1px dashed transparent; border-radius: 10px; }
-.fm-drop.over { border-color: rgba(99, 211, 166, 0.5); background: rgba(99, 211, 166, 0.04); }
-.fm-drop-hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #8ee6c3; font-size: 15px; pointer-events: none; background: rgba(16, 19, 18, 0.55); }
+.fm-drop.over { border-color: rgba(240, 244, 241, 0.5); background: rgba(240, 244, 241, 0.04); }
+.fm-drop-hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #edf2ef; font-size: 15px; pointer-events: none; background: rgba(16, 19, 18, 0.55); }
 </style>

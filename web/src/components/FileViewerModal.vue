@@ -126,5 +126,5 @@ onBeforeUnmount(() => off?.())
   background: #0c0f0e; color: #c6d0ca; border: 1px solid #272e2c; border-radius: 8px;
   padding: 12px 14px; font-size: 12.5px; line-height: 1.65; outline: none;
 }
-.fm-edit-area:focus { border-color: rgba(99, 211, 166, 0.4); }
+.fm-edit-area:focus { border-color: rgba(240, 244, 241, 0.4); }
 </style>
