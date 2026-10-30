@@ -50,7 +50,7 @@ body {
 
 /* 终端风输出块 */
 .term {
-  background: #08090c;
+  background: #0d0f13;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
@@ -266,7 +266,7 @@ body {
 
 /* ---------- 终端页(xterm 容器) ---------- */
 .term-box {
-  background: #08090c;
+  background: #0d0f13;
   border-radius: var(--radius);
   padding: 10px 12px;
   min-height: 420px;

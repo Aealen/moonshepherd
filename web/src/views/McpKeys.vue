@@ -327,10 +327,10 @@ onMounted(() => { load(); loadNodes(); loadApps() })
   flex-direction: column;
   gap: 6px;
   padding: 10px 12px;
-  background: #0b0c11;
-  border: 1px solid #1c2130;
+  background: #101216;
+  border: 1px solid #23272e;
   border-radius: 8px;
-  box-shadow: inset 0 1px 6px rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 1px 6px rgba(0, 0, 0, 0.25);
 }
 .scope-desc-item {
   display: flex;
@@ -345,10 +345,10 @@ onMounted(() => { load(); loadNodes(); loadApps() })
   max-height: 300px;
   overflow: auto;
   padding: 8px 6px;
-  background: #0b0c11;                 /* 比卡片底更深:下凹第一步 */
+  background: #101216;                 /* 比卡片底更深:下凹第一步 */
   border-radius: 8px;
-  border: 1px solid #1c2130;
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.45);  /* 内阴影=凹陷 */
+  border: 1px solid #23272e;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);  /* 内阴影=凹陷 */
 }
 .crumb-select { min-width: 100%; }
 
@@ -381,8 +381,8 @@ onMounted(() => { load(); loadNodes(); loadApps() })
 .usage-url {
   font-size: 12.5px;
   color: #eef1f5;
-  background: #0a0b0d;
-  border: 1px solid #23272e;
+  background: #1b1f25;
+  border: 1px solid #2f343c;
   border-radius: 8px;
   padding: 5px 12px;
   max-width: 380px;

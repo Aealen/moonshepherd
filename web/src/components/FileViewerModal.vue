@@ -123,7 +123,7 @@ onBeforeUnmount(() => off?.())
 <style scoped>
 .fm-edit-area {
   width: 100%; min-height: 52vh; resize: vertical;
-  background: #08090c; color: #c6d0ca; border: 1px solid #23272e; border-radius: 8px;
+  background: #0d0f13; color: #c6d0ca; border: 1px solid #23272e; border-radius: 8px;
   padding: 12px 14px; font-size: 12.5px; line-height: 1.65; outline: none;
 }
 .fm-edit-area:focus { border-color: rgba(238, 241, 245, 0.4); }

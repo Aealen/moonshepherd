@@ -36,7 +36,7 @@ function ensureTerm() {
   term = new Terminal({
     fontSize: 12.5,
     fontFamily: '"Cascadia Mono", "JetBrains Mono", Consolas, monospace',
-    theme: { background: '#08090c', foreground: '#c6d0ca', cursor: '#eef1f5', selectionBackground: '#3a3f4a' },
+    theme: { background: '#0d0f13', foreground: '#c6d0ca', cursor: '#eef1f5', selectionBackground: '#3a3f4a' },
     scrollback: 10000,
     disableStdin: true, // 只读日志
   })
