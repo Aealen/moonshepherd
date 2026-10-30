@@ -110,14 +110,14 @@ async function login() {
   width: 130px;
   height: 130px;
   border-radius: 50%;
-  background: radial-gradient(circle at 38% 35%, #ffffff 0%, #e8ecea 45%, #b7c1ba 100%);
+  background: radial-gradient(circle at 38% 35%, #ffffff 0%, #e9ebef 45%, #b8bdc7 100%);
   box-shadow: 0 0 70px 22px rgba(255, 255, 255, 0.12), 0 0 160px 60px rgba(255, 255, 255, 0.05);
   opacity: 0.9;
 }
 .star {
   position: absolute;
   border-radius: 50%;
-  background: #cfd8d2;
+  background: #cfd4dd;
   animation: twinkle 4s ease-in-out infinite;
 }
 @keyframes twinkle {
@@ -130,9 +130,9 @@ async function login() {
   gap: 8px;
   margin-top: 22px;
   font-size: 12px;
-  color: #6a756f;
+  color: #6b7280;
 }
-.login-features i { font-style: normal; color: #3a453f; }
+.login-features i { font-style: normal; color: #3a3f47; }
 .login-footer {
   position: absolute;
   bottom: 22px;
@@ -140,6 +140,6 @@ async function login() {
   right: 0;
   text-align: center;
   font-size: 12px;
-  color: #4d574f;
+  color: #4d535e;
 }
 </style>

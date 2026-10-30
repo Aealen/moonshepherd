@@ -203,7 +203,7 @@ const columns = computed<DataTableColumns<any>>(() => [
   {
     title: '名称', key: 'name', minWidth: 260,
     render: (r) => h('span', { style: 'cursor:pointer; display:inline-flex; align-items:center; gap:8px', onClick: () => enter(r) }, [
-      h(NIcon, { size: 16, style: r.dir ? 'color:#e3c47f' : r.no_perm ? 'color:#66706b' : 'color:#8fb8a8' },
+      h(NIcon, { size: 16, style: r.dir ? 'color:#e3c47f' : r.no_perm ? 'color:#676e7a' : 'color:#8b96a8' },
         { default: () => h(r.dir ? FolderOpenOutline : r.no_perm ? LockClosedOutline : DocumentOutline) }),
       h('span', { style: 'font-weight:500' }, r.name),
       r.no_perm ? h(NTag, { size: 'tiny', bordered: false }, { default: () => '无权限' }) : null,
@@ -273,11 +273,11 @@ NaN
 
 <style scoped>
 .fm-tree { width: 235px; flex-shrink: 0; padding: 10px 8px; overflow: auto; }
-.fm-tree-title { font-size: 12px; color: #66706b; letter-spacing: 1px; margin: 0 0 8px 6px; }
+.fm-tree-title { font-size: 12px; color: #676e7a; letter-spacing: 1px; margin: 0 0 8px 6px; }
 .fm-crumbs { display: flex; gap: 4px; align-items: center; font-size: 13px; flex-wrap: wrap; }
-.crumb { cursor: pointer; color: #edf2ef; }
+.crumb { cursor: pointer; color: #eef1f5; }
 .crumb:hover { text-decoration: underline; }
 .fm-drop { flex: 1; display: flex; flex-direction: column; position: relative; border: 1px dashed transparent; border-radius: 10px; }
-.fm-drop.over { border-color: rgba(240, 244, 241, 0.5); background: rgba(240, 244, 241, 0.04); }
-.fm-drop-hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #edf2ef; font-size: 15px; pointer-events: none; background: rgba(16, 19, 18, 0.55); }
+.fm-drop.over { border-color: rgba(238, 241, 245, 0.5); background: rgba(238, 241, 245, 0.04); }
+.fm-drop-hint { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #eef1f5; font-size: 15px; pointer-events: none; background: rgba(16, 19, 18, 0.55); }
 </style>

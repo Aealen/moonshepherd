@@ -5,27 +5,27 @@
 
 :root {
   /* 表面层叠:由深到浅,纯灰阶微绿味 */
-  --bg-0: #101312;        /* 最深:页面底 */
-  --bg-1: #151a18;        /* 侧栏/面板 */
-  --bg-2: #1a201e;        /* 卡片 */
-  --bg-3: #212826;        /* 卡片悬浮/输入框 */
-  --bg-4: #2a322f;        /* hover 最亮表面 */
+  --bg-0: #0a0b0d;        /* 最深:页面底 */
+  --bg-1: #101216;        /* 侧栏/面板 */
+  --bg-2: #15181d;        /* 卡片 */
+  --bg-3: #1b1f25;        /* 卡片悬浮/输入框 */
+  --bg-4: #24282f;        /* hover 最亮表面 */
   --glass: rgba(26, 32, 30, 0.78);
-  --line: #272e2c;        /* 分隔线 */
-  --line-strong: #333c39;
+  --line: #23272e;        /* 分隔线 */
+  --line-strong: #2f343c;
 
   /* 单一强调色:素白(单色画廊),绿仅保留给状态点 */
-  --moon: #edf2ef;
+  --moon: #eef1f5;
   --moon-strong: #ffffff;
-  --moon-dim: rgba(240, 244, 241, 0.08);
-  --moon-line: rgba(240, 244, 241, 0.25);
-  --accent: #a8b5ae;      /* 信息:灰 */
+  --moon-dim: rgba(238, 241, 245, 0.08);
+  --moon-line: rgba(238, 241, 245, 0.25);
+  --accent: #a9b1bd;      /* 信息:灰 */
   --gold: #e3c47f;        /* 警示:沙金 */
   --rose: #ef9d93;        /* 危险:陶粉 */
   --status-ok: #63d3a6;   /* 状态绿:只用于在线/运行中小点 */
-  --text-1: #eef2f0;      /* 主文本 */
-  --text-2: #a3ada8;      /* 次文本 */
-  --text-3: #66706b;      /* 弱文本 */
+  --text-1: #eef1f5;      /* 主文本 */
+  --text-2: #a4abb8;      /* 次文本 */
+  --text-3: #676e7a;      /* 弱文本 */
 
   /* 胶囊控件统一圆角 */
   --radius: 14px;
@@ -50,7 +50,7 @@ body {
 
 /* 终端风输出块 */
 .term {
-  background: #0c0f0e;
+  background: #08090c;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   padding: 12px 14px;
@@ -67,8 +67,8 @@ body {
 
 /* 滚动条:细而雅 */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-thumb { background: #2b332f; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #3a453f; }
+::-webkit-scrollbar-thumb { background: #2a2e35; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #3a3f47; }
 ::-webkit-scrollbar-track { background: transparent; }
 
 /* ---------- 页面骨架 ---------- */
@@ -179,17 +179,17 @@ body {
   display: flex; justify-content: center; gap: 8px;
   margin-top: 22px; font-size: 12px; color: var(--text-3);
 }
-.login-features i { font-style: normal; color: #3a453f; }
+.login-features i { font-style: normal; color: #3a3f47; }
 .login-footer {
   position: absolute; bottom: 22px; left: 0; right: 0;
-  text-align: center; font-size: 12px; color: #4d574f;
+  text-align: center; font-size: 12px; color: #4d535e;
   z-index: 1;
 }
 /* 浏览器自动填充会把密码框染成白底,压回暗色 */
 .login-wrap input:-webkit-autofill,
 .login-wrap input:-webkit-autofill:hover,
 .login-wrap input:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 1000px #212826 inset;
+  -webkit-box-shadow: 0 0 0 1000px #1b1f25 inset;
   -webkit-text-fill-color: var(--text-1);
   caret-color: var(--text-1);
   transition: background-color 9999s ease-in-out 0s;
@@ -216,7 +216,7 @@ body {
   border-color: var(--line) !important;
 }
 .n-data-table .n-data-table-tr:hover .n-data-table-td {
-  background: rgba(240, 244, 241, 0.035) !important;
+  background: rgba(238, 241, 245, 0.035) !important;
 }
 .n-data-table .n-data-table-th {
   background: rgba(255, 255, 255, 0.02) !important;
@@ -266,7 +266,7 @@ body {
 
 /* ---------- 终端页(xterm 容器) ---------- */
 .term-box {
-  background: #0c0f0e;
+  background: #08090c;
   border-radius: var(--radius);
   padding: 10px 12px;
   min-height: 420px;

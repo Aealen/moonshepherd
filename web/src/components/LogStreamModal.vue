@@ -36,7 +36,7 @@ function ensureTerm() {
   term = new Terminal({
     fontSize: 12.5,
     fontFamily: '"Cascadia Mono", "JetBrains Mono", Consolas, monospace',
-    theme: { background: '#0c0f0e', foreground: '#c6d0ca', cursor: '#edf2ef', selectionBackground: '#3a4a42' },
+    theme: { background: '#08090c', foreground: '#c6d0ca', cursor: '#eef1f5', selectionBackground: '#3a3f4a' },
     scrollback: 10000,
     disableStdin: true, // 只读日志
   })
@@ -144,7 +144,7 @@ void sendClient
       <n-button v-if="streaming" size="tiny" type="warning" secondary @click="stopStream()">停止跟随</n-button>
       <n-button v-else size="tiny" type="primary" @click="start">重新跟随</n-button>
     </div>
-    <div ref="container" style="height:60vh; border-radius:8px; overflow:hidden; border:1px solid #272e2c"></div>
+    <div ref="container" style="height:60vh; border-radius:8px; overflow:hidden; border:1px solid #23272e"></div>
     <div class="muted" style="font-size:11.5px; margin-top:8px">
       tail -f 语义:打开即回放最近 200 行,此后实时推送;向上滚动可翻历史,点「回到底部」恢复跟随。
     </div>
@@ -155,9 +155,9 @@ void sendClient
 .live-dot {
   display: inline-block;
   width: 7px; height: 7px; border-radius: 50%;
-  background: #edf2ef;
+  background: #eef1f5;
   margin-right: 5px;
-  box-shadow: 0 0 7px rgba(240, 244, 241, 0.7);
+  box-shadow: 0 0 7px rgba(238, 241, 245, 0.7);
   animation: log-breathe 2.2s ease-in-out infinite;
 }
 @keyframes log-breathe {

@@ -21,26 +21,26 @@ const collapsed = ref(false)
 // 主题:暗色画廊 —— 单色分层表面 + 单一牧绿强调 + 胶囊控件
 const themeOverrides: GlobalThemeOverrides = {
   common: {
-    primaryColor: '#edf2ef',
+    primaryColor: '#eef1f5',
     primaryColorHover: '#ffffff',
-    primaryColorPressed: '#d3ddd6',
+    primaryColorPressed: '#d5dae2',
     primaryColorSuppl: '#ffffff',
-    infoColor: '#a8b5ae',
-    successColor: '#8fb8a8',
+    infoColor: '#a9b1bd',
+    successColor: '#8b96a8',
     warningColor: '#e3c47f',
     errorColor: '#ef9d93',
     borderRadius: '10px',
-    bodyColor: '#101312',
-    cardColor: '#1a201e',
-    modalColor: '#1a201e',
-    popoverColor: '#212826',
-    inputColor: '#212826',
-    tableColor: '#151a18',
-    dividerColor: '#272e2c',
-    borderColor: '#333c39',
-    textColor1: '#eef2f0',
-    textColor2: '#a3ada8',
-    textColor3: '#66706b',
+    bodyColor: '#0a0b0d',
+    cardColor: '#15181d',
+    modalColor: '#15181d',
+    popoverColor: '#1b1f25',
+    inputColor: '#1b1f25',
+    tableColor: '#101216',
+    dividerColor: '#23272e',
+    borderColor: '#2f343c',
+    textColor1: '#eef1f5',
+    textColor2: '#a4abb8',
+    textColor3: '#676e7a',
     fontWeightStrong: '600',
   },
   Button: {
@@ -53,7 +53,7 @@ const themeOverrides: GlobalThemeOverrides = {
   },
   Menu: {
     borderRadius: '10px',
-    itemColorActive: 'rgba(240, 244, 241, 0.08)',
+    itemColorActive: 'rgba(238, 241, 245, 0.08)',
     itemColorHover: 'rgba(255, 255, 255, 0.04)',
     itemTextColorActive: '#ffffff',
     itemTextColorActiveHover: '#ffffff',
@@ -180,7 +180,7 @@ if (!isLogin.value) {
               </div>
               <n-dropdown :options="userMenu" @select="logout">
                 <n-button quaternary size="small" style="gap:9px; padding:0 10px;">
-                  <n-avatar round :size="26" style="background:linear-gradient(135deg,#f2f5f3,#9fb0a7); color:#101312; font-weight:700">M</n-avatar>
+                  <n-avatar round :size="26" style="background:linear-gradient(135deg,#f4f6f9,#a7aebc); color:#0a0b0d; font-weight:700">M</n-avatar>
                   <span style="font-size:13px">admin</span>
                 </n-button>
               </n-dropdown>
@@ -207,7 +207,7 @@ if (!isLogin.value) {
 .brand-name { font-weight: 800; font-size: 17px; letter-spacing: 1px; line-height: 1.2; }
 .brand-en {
   font-size: 10.5px;
-  color: #66706b;
+  color: #676e7a;
   letter-spacing: 1.4px;
   text-transform: uppercase;
 }
@@ -216,7 +216,7 @@ if (!isLogin.value) {
   bottom: 14px; left: 0; right: 0;
   text-align: center;
   font-size: 10.5px;
-  color: #454f49;
+  color: #4a505c;
   letter-spacing: 1px;
   display: flex; align-items: center; justify-content: center; gap: 6px;
 }
@@ -237,9 +237,9 @@ if (!isLogin.value) {
   font-family: "JetBrains Mono", Consolas, monospace;
 }
 .stat-chip.online {
-  color: #edf2ef;
-  background: rgba(240, 244, 241, 0.07);
-  border: 1px solid rgba(240, 244, 241, 0.2);
+  color: #eef1f5;
+  background: rgba(238, 241, 245, 0.07);
+  border: 1px solid rgba(238, 241, 245, 0.2);
 }
 .stat-chip.offline {
   color: #e3c47f;

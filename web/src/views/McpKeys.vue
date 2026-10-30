@@ -331,7 +331,7 @@ Header: Authorization: Bearer mcp_xxx…</pre>
   align-items: flex-start;
   gap: 8px;
   font-size: 12.5px;
-  color: #a3ada8;
+  color: #a4abb8;
   line-height: 1.6;
 }
 .scope-desc-item .n-tag { flex-shrink: 0; margin-top: 1px; }
