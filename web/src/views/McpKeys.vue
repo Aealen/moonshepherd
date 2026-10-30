@@ -241,10 +241,10 @@ onMounted(() => { load(); loadNodes(); loadApps() })
             </div>
           </div>
           <div v-else class="muted" style="font-size:12px; margin-top:8px">未勾选任何能力时该 Key 无法调用任何工具</div>
-          <div v-if="fScopes.includes('exec')" style="color:#ff8f9a; font-size:12px; margin-top:6px">
+          <div v-if="fScopes.includes('exec')" style="color:#ef9d93; font-size:12px; margin-top:6px">
             ⚠ 命令执行 = 把节点 shell 交给 AI,建议仅绑测试节点
           </div>
-          <div v-if="fScopes.includes('files')" style="color:#f2c97d; font-size:12px; margin-top:4px">
+          <div v-if="fScopes.includes('files')" style="color:#e3c47f; font-size:12px; margin-top:4px">
             ⚠ 文件读写可触达节点文件系统
           </div>
         </div>
@@ -331,7 +331,7 @@ Header: Authorization: Bearer mcp_xxx…</pre>
   align-items: flex-start;
   gap: 8px;
   font-size: 12.5px;
-  color: #9aa3b8;
+  color: #a3ada8;
   line-height: 1.6;
 }
 .scope-desc-item .n-tag { flex-shrink: 0; margin-top: 1px; }

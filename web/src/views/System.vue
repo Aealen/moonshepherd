@@ -46,7 +46,7 @@ onMounted(load)
     <div style="display:flex; align-items:flex-start; justify-content:space-between">
       <div>
         <div class="page-title">系统</div>
-        <div class="page-sub">面板信息 · 账户安全 · <span style="color:#6ee7d8">审计已独立成菜单</span></div>
+        <div class="page-sub">面板信息 · 账户安全 · <span style="color:#63d3a6">审计已独立成菜单</span></div>
       </div>
       <n-button size="small" @click="showPwd = true">修改密码</n-button>
     </div>

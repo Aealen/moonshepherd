@@ -82,7 +82,7 @@ async function login() {
         <n-form-item label="密码" label-placement="top">
           <n-input v-model:value="password" type="password" show-password-on="click" placeholder="至少 10 位" />
         </n-form-item>
-        <div v-if="lockHint" style="color:#ff8f8f; font-size:12.5px; margin-bottom:10px;">{{ lockHint }}</div>
+        <div v-if="lockHint" style="color:#ef9d93; font-size:12.5px; margin-bottom:10px;">{{ lockHint }}</div>
         <n-button type="primary" block :loading="loading" :disabled="!password" @click="login">进入面板</n-button>
       </n-form>
       <div class="login-features">
@@ -110,14 +110,14 @@ async function login() {
   width: 130px;
   height: 130px;
   border-radius: 50%;
-  background: radial-gradient(circle at 38% 35%, #eef7f2 0%, #c9e4d8 45%, #8fb8ab 100%);
-  box-shadow: 0 0 70px 22px rgba(110, 231, 216, 0.14), 0 0 160px 60px rgba(110, 231, 216, 0.06);
+  background: radial-gradient(circle at 38% 35%, #f2faf5 0%, #cfe8db 45%, #8fb8a4 100%);
+  box-shadow: 0 0 70px 22px rgba(99, 211, 166, 0.14), 0 0 160px 60px rgba(99, 211, 166, 0.06);
   opacity: 0.85;
 }
 .star {
   position: absolute;
   border-radius: 50%;
-  background: #cfd8ea;
+  background: #cfd8d2;
   animation: twinkle 4s ease-in-out infinite;
 }
 @keyframes twinkle {
@@ -130,9 +130,9 @@ async function login() {
   gap: 8px;
   margin-top: 22px;
   font-size: 12px;
-  color: #6f6f80;
+  color: #6a756f;
 }
-.login-features i { font-style: normal; color: #3c3c48; }
+.login-features i { font-style: normal; color: #3a453f; }
 .login-footer {
   position: absolute;
   bottom: 22px;
@@ -140,6 +140,6 @@ async function login() {
   right: 0;
   text-align: center;
   font-size: 12px;
-  color: #55555f;
+  color: #4d574f;
 }
 </style>

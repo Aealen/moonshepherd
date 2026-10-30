@@ -249,10 +249,10 @@ onUnmounted(() => off?.())
 /* Agent 版本列 + 行菜单:数据表 render 函数创建的元素不带 scoped 属性,
    样式须放非 scoped 块才能命中(类名沿用,仅本页使用) */
 .ver-cell { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; padding: 2px 0; }
-.ver-stale { color: #f2c97d; }
+.ver-stale { color: #e3c47f; }
 .ver-badge.warn {
   background: rgba(157, 165, 180, 0.1);
-  color: #9aa3b8;
+  color: #a3ada8;
   border-color: rgba(157, 165, 180, 0.3);
 }
 .ver-badge {
@@ -261,9 +261,9 @@ onUnmounted(() => off?.())
   font-family: "Inter", system-ui, sans-serif;
   padding: 3px 8px;
   border-radius: 99px;
-  background: rgba(242, 201, 125, 0.12);
-  color: #f2c97d;
-  border: 1px solid rgba(242, 201, 125, 0.3);
+  background: rgba(227, 196, 127, 0.12);
+  color: #e3c47f;
+  border: 1px solid rgba(227, 196, 127, 0.3);
 }
 
 /* ⋯ 行菜单(raw popover 自带样式):与全局暗夜牧场风格一致 */
@@ -271,7 +271,7 @@ onUnmounted(() => off?.())
   min-width: 108px;
   padding: 5px;
   background: #1c2333;
-  border: 1px solid rgba(110, 231, 216, 0.14);
+  border: 1px solid rgba(99, 211, 166, 0.14);
   border-radius: 10px;
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
 }
@@ -283,9 +283,9 @@ onUnmounted(() => off?.())
   color: #c3cad9;
   transition: background 0.15s, color 0.15s;
 }
-.row-menu-item:hover { background: rgba(110, 231, 216, 0.1); color: #99f0e4; }
-.row-menu-item.danger { color: #ff8f9a; }
-.row-menu-item.danger:hover { background: rgba(255, 143, 154, 0.12); color: #ff8f9a; }
+.row-menu-item:hover { background: rgba(99, 211, 166, 0.1); color: #8ee6c3; }
+.row-menu-item.danger { color: #ef9d93; }
+.row-menu-item.danger:hover { background: rgba(239, 157, 147, 0.12); color: #ef9d93; }
 </style>
 
 <template>
@@ -367,19 +367,19 @@ onUnmounted(() => off?.())
 }
 .node-state i {
   width: 8px; height: 8px; border-radius: 50%;
-  background: #5d6579;
+  background: #66706b;
 }
-.node-state.online { color: #99f0e4; }
+.node-state.online { color: #8ee6c3; }
 .node-state.online i {
-  background: #6ee7d8;
-  box-shadow: 0 0 8px rgba(110, 231, 216, 0.7);
+  background: #63d3a6;
+  box-shadow: 0 0 8px rgba(99, 211, 166, 0.7);
 }
-.node-state.offline { color: #9aa3b8; }
+.node-state.offline { color: #a3ada8; }
 .node-state.offline i { background: #8a7a4e; }
-.node-state.disabled { color: #5d6579; }
+.node-state.disabled { color: #66706b; }
 .pulse { animation: node-breathe 2.4s ease-in-out infinite; }
 @keyframes node-breathe {
-  0%, 100% { box-shadow: 0 0 3px rgba(110, 231, 216, 0.5); }
-  50% { box-shadow: 0 0 11px rgba(110, 231, 216, 0.95); }
+  0%, 100% { box-shadow: 0 0 3px rgba(99, 211, 166, 0.5); }
+  50% { box-shadow: 0 0 11px rgba(99, 211, 166, 0.95); }
 }
 </style>

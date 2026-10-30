@@ -111,7 +111,7 @@ onBeforeUnmount(() => off?.())
       </template>
     </div>
     <div v-if="loading" class="muted" style="padding:30px; text-align:center">正在读取…</div>
-    <div v-else-if="error" style="padding:20px; color:#ff8f9a; font-size:13px">{{ error }}</div>
+    <div v-else-if="error" style="padding:20px; color:#ef9d93; font-size:13px">{{ error }}</div>
     <textarea v-else-if="editing" v-model="editBuf" class="fm-edit-area mono"></textarea>
     <pre v-else class="term" style="max-height:58vh; margin:0">{{ content || '（空文件）' }}</pre>
     <div class="muted" style="font-size:11.5px; margin-top:8px">
@@ -123,8 +123,8 @@ onBeforeUnmount(() => off?.())
 <style scoped>
 .fm-edit-area {
   width: 100%; min-height: 52vh; resize: vertical;
-  background: #08090d; color: #c9d1e0; border: 1px solid #232838; border-radius: 8px;
+  background: #0c0f0e; color: #c6d0ca; border: 1px solid #272e2c; border-radius: 8px;
   padding: 12px 14px; font-size: 12.5px; line-height: 1.65; outline: none;
 }
-.fm-edit-area:focus { border-color: rgba(110, 231, 216, 0.4); }
+.fm-edit-area:focus { border-color: rgba(99, 211, 166, 0.4); }
 </style>

@@ -18,44 +18,52 @@ const online = ref<number | null>(null)
 const offline = ref<number | null>(null)
 const collapsed = ref(false)
 
-// 主题:暗夜牧场 —— 月光青主色 + 玻璃层次
+// 主题:暗色画廊 —— 单色分层表面 + 单一牧绿强调 + 胶囊控件
 const themeOverrides: GlobalThemeOverrides = {
   common: {
-    primaryColor: '#6ee7d8',
-    primaryColorHover: '#99f0e4',
-    primaryColorPressed: '#4fd0bf',
-    primaryColorSuppl: '#99f0e4',
-    infoColor: '#7ab8ff',
-    warningColor: '#f2c97d',
-    errorColor: '#ff8f9a',
-    borderRadius: '8px',
-    bodyColor: '#0a0b10',
-    cardColor: '#151823',
-    modalColor: '#171a26',
-    popoverColor: '#1b1f2e',
-    inputColor: '#1b1f2e',
-    tableColor: '#10121a',
-    dividerColor: '#232838',
-    borderColor: '#2e3550',
-    textColor1: '#eef1f8',
-    textColor2: '#9aa3b8',
-    textColor3: '#5d6579',
+    primaryColor: '#63d3a6',
+    primaryColorHover: '#8ee6c3',
+    primaryColorPressed: '#4bb98d',
+    primaryColorSuppl: '#8ee6c3',
+    infoColor: '#8fb8a8',
+    warningColor: '#e3c47f',
+    errorColor: '#ef9d93',
+    borderRadius: '10px',
+    bodyColor: '#101312',
+    cardColor: '#1a201e',
+    modalColor: '#1a201e',
+    popoverColor: '#212826',
+    inputColor: '#212826',
+    tableColor: '#151a18',
+    dividerColor: '#272e2c',
+    borderColor: '#333c39',
+    textColor1: '#eef2f0',
+    textColor2: '#a3ada8',
+    textColor3: '#66706b',
     fontWeightStrong: '600',
   },
   Button: {
-    textColorPrimary: '#0a0b10',
+    textColorPrimary: '#0d100f',
     fontWeight: '600',
+    borderRadiusMedium: '999px',
+    borderRadiusSmall: '999px',
+    borderRadiusTiny: '999px',
+    borderRadiusLarge: '999px',
   },
   Menu: {
-    itemColorActive: 'rgba(110, 231, 216, 0.08)',
+    borderRadius: '10px',
+    itemColorActive: 'rgba(99, 211, 166, 0.10)',
     itemColorHover: 'rgba(255, 255, 255, 0.04)',
-    itemTextColorActive: '#99f0e4',
-    itemTextColorActiveHover: '#99f0e4',
-    itemIconColorActive: '#99f0e4',
-    itemTextColorChildActive: '#99f0e4',
-    itemIconColorChildActive: '#99f0e4',
+    itemTextColorActive: '#8ee6c3',
+    itemTextColorActiveHover: '#8ee6c3',
+    itemIconColorActive: '#8ee6c3',
+    itemTextColorChildActive: '#8ee6c3',
+    itemIconColorChildActive: '#8ee6c3',
   },
-  Tag: { borderRadius: '99px' },
+  Tag: { borderRadius: '999px' },
+  Input: { borderRadius: '10px' },
+  Card: { borderRadius: '14px' },
+  Dialog: { borderRadius: '16px' },
 }
 
 function renderIcon(icon: any) {
@@ -171,7 +179,7 @@ if (!isLogin.value) {
               </div>
               <n-dropdown :options="userMenu" @select="logout">
                 <n-button quaternary size="small" style="gap:9px; padding:0 10px;">
-                  <n-avatar round :size="26" style="background:linear-gradient(135deg,#6ee7d8,#4a86c8); color:#0a0b10; font-weight:700">M</n-avatar>
+                  <n-avatar round :size="26" style="background:linear-gradient(135deg,#63d3a6,#4a7a68); color:#0d100f; font-weight:700">M</n-avatar>
                   <span style="font-size:13px">admin</span>
                 </n-button>
               </n-dropdown>
@@ -193,11 +201,11 @@ if (!isLogin.value) {
   gap: 11px;
   padding: 20px 20px 16px;
 }
-.brand-mark { width: 30px; height: 30px; filter: drop-shadow(0 0 8px rgba(110, 231, 216, 0.35)); }
+.brand-mark { width: 30px; height: 30px; }
 .brand-name { font-weight: 800; font-size: 17px; letter-spacing: 1px; line-height: 1.2; }
 .brand-en {
   font-size: 10.5px;
-  color: #5d6579;
+  color: #66706b;
   letter-spacing: 1.4px;
   text-transform: uppercase;
 }
@@ -206,14 +214,13 @@ if (!isLogin.value) {
   bottom: 14px; left: 0; right: 0;
   text-align: center;
   font-size: 10.5px;
-  color: #3e4456;
+  color: #454f49;
   letter-spacing: 1px;
   display: flex; align-items: center; justify-content: center; gap: 6px;
 }
 .foot-dot {
   width: 6px; height: 6px; border-radius: 50%;
-  background: #6ee7d8; opacity: 0.6;
-  box-shadow: 0 0 6px rgba(110, 231, 216, 0.6);
+  background: #63d3a6; opacity: 0.55;
 }
 .fade-enter-active, .fade-leave-active { transition: opacity 0.15s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
@@ -228,26 +235,25 @@ if (!isLogin.value) {
   font-family: "JetBrains Mono", Consolas, monospace;
 }
 .stat-chip.online {
-  color: #99f0e4;
-  background: rgba(110, 231, 216, 0.09);
-  border: 1px solid rgba(110, 231, 216, 0.22);
+  color: #8ee6c3;
+  background: rgba(99, 211, 166, 0.09);
+  border: 1px solid rgba(99, 211, 166, 0.22);
 }
 .stat-chip.offline {
-  color: #f2c97d;
-  background: rgba(242, 201, 125, 0.08);
-  border: 1px solid rgba(242, 201, 125, 0.2);
+  color: #e3c47f;
+  background: rgba(227, 196, 127, 0.08);
+  border: 1px solid rgba(227, 196, 127, 0.2);
 }
 .stat-dot {
   width: 7px; height: 7px; border-radius: 50%;
-  background: #f2c97d;
+  background: #e3c47f;
 }
 .stat-chip.online .stat-dot {
-  background: #6ee7d8;
-  box-shadow: 0 0 8px rgba(110, 231, 216, 0.7);
+  background: #63d3a6;
 }
 .pulse { animation: breathe 2.4s ease-in-out infinite; }
 @keyframes breathe {
-  0%, 100% { box-shadow: 0 0 4px rgba(110, 231, 216, 0.5); }
-  50% { box-shadow: 0 0 12px rgba(110, 231, 216, 0.95); }
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
 }
 </style>
