@@ -5,7 +5,7 @@
 import { computed, h, onMounted, ref } from 'vue'
 import {
   NDataTable, NButton, NTag, NModal, NInput, NCheckbox, NCheckboxGroup, NSpace,
-  NPopconfirm, NCollapse, NCollapseItem, NTree, useMessage,
+  NPopconfirm, NTree, useMessage,
   type DataTableColumns, type TreeOption,
 } from 'naive-ui'
 import { api, fmtAgo, type Node, type AppRow, type Page } from '../api'
@@ -205,6 +205,12 @@ function copyPlaintext() {
   navigator.clipboard.writeText(plaintext.value).then(() => message.success('已复制'))
 }
 
+// 接入信息卡:端点一键复制
+const mcpEndpoint = `${location.origin}/mcp`
+function copyEndpoint() {
+  navigator.clipboard.writeText(mcpEndpoint).then(() => message.success('端点地址已复制'))
+}
+
 onMounted(() => { load(); loadNodes(); loadApps() })
 </script>
 
@@ -216,6 +222,21 @@ onMounted(() => { load(); loadNodes(); loadApps() })
         <div class="page-sub">让 AI 客户端安全地操控牧云 · 能力(scope)决定"能做什么",授权范围决定"对哪些节点/应用做" · 随时可编辑</div>
       </div>
       <n-button type="primary" size="small" class="glow-hover" @click="openCreate">＋ 创建 Key</n-button>
+    </div>
+
+    <!-- 接入信息:常驻描述区,置于列表上方(放底部会被长列表挤压) -->
+    <div class="usage-card">
+      <div class="usage-endpoint">
+        <div class="usage-label">Streamable HTTP 端点</div>
+        <div class="usage-url mono" :title="mcpEndpoint">{{ mcpEndpoint }}</div>
+        <n-button size="tiny" quaternary type="primary" @click="copyEndpoint">复制</n-button>
+      </div>
+      <div class="usage-steps">
+        <div class="usage-label">接入三步</div>
+        <div class="usage-step"><b>1</b> 创建 Key 并复制明文(仅显示一次)</div>
+        <div class="usage-step"><b>2</b><span>客户端配置 HTTP MCP,<span class="mono">Header: Authorization: Bearer mcp_xxx…</span></span></div>
+        <div class="usage-step"><b>3</b> 对 AI 说"列一下节点"——范围外的请求会被拒绝并记录审计</div>
+      </div>
     </div>
 
     <n-data-table :columns="columns" :data="keys" :bordered="false" size="small" />
@@ -296,21 +317,6 @@ onMounted(() => { load(); loadNodes(); loadApps() })
         <n-button size="small" quaternary @click="showPlaintext = false">我已保存,关闭</n-button>
       </template>
     </n-modal>
-
-    <n-collapse style="margin-top:18px">
-      <n-collapse-item title="如何在 AI 客户端中使用?" name="usage">
-        <div class="muted" style="font-size:12.5px; line-height:1.9">
-          <div>1. 创建 Key 并复制明文;2. 客户端配置 Streamable HTTP endpoint:</div>
-          <pre class="term">URL:   https://<你的面板域名>/mcp
-Header: Authorization: Bearer mcp_xxx…</pre>
-          <div>Claude Desktop(settings.json 远程 MCP 示例):</div>
-          <pre class="term">{ "mcpServers": { "moonshepherd": {
-  "type": "http", "url": "https://面板/mcp",
-  "headers": { "Authorization": "Bearer mcp_xxx…" } } } }</pre>
-          <div>3. 对 AI 说:"列一下节点""看下 Gitea 容器日志"——授权范围外的请求会被拒绝并记录审计。</div>
-        </div>
-      </n-collapse-item>
-    </n-collapse>
   </div>
 </template>
 
@@ -345,4 +351,65 @@ Header: Authorization: Bearer mcp_xxx…</pre>
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.45);  /* 内阴影=凹陷 */
 }
 .crumb-select { min-width: 100%; }
+
+/* 接入信息卡:列表上方常驻,横向双栏 */
+.usage-card {
+  display: flex;
+  gap: 28px;
+  align-items: stretch;
+  margin-bottom: 16px;
+  padding: 14px 18px;
+  background: #15181d;
+  border: 1px solid #23272e;
+  border-radius: 12px;
+}
+.usage-endpoint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding-right: 28px;
+  border-right: 1px solid #23272e;
+}
+.usage-label {
+  font-size: 11px;
+  color: #676e7a;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+.usage-endpoint .usage-label { margin-bottom: 0; flex-shrink: 0; }
+.usage-url {
+  font-size: 12.5px;
+  color: #eef1f5;
+  background: #0a0b0d;
+  border: 1px solid #23272e;
+  border-radius: 8px;
+  padding: 5px 12px;
+  max-width: 380px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.usage-steps { flex: 1; min-width: 0; }
+.usage-step {
+  font-size: 12.5px;
+  color: #a4abb8;
+  line-height: 1.9;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+.usage-step b {
+  color: #eef1f5;
+  font-size: 11px;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #24282f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transform: translateY(1px);
+}
+.usage-step .mono { font-size: 11.5px; color: #676e7a; }
 </style>
