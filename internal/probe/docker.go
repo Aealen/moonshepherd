@@ -50,9 +50,16 @@ type sockContainer struct {
 // inspectDetail /containers/{id}/json 的关注子集（docs/06 应用详情）。
 type inspectDetail struct {
 	Config struct {
-		Env    []string          `json:"Env"`
-		Labels map[string]string `json:"Labels"`
+		Env        []string          `json:"Env"`
+		Labels     map[string]string `json:"Labels"`
+		Entrypoint []string          `json:"Entrypoint"`
+		Cmd        []string          `json:"Cmd"`
 	} `json:"Config"`
+	HostConfig struct {
+		RestartPolicy struct {
+			Name string `json:"Name"`
+		} `json:"RestartPolicy"`
+	} `json:"HostConfig"`
 	NetworkSettings struct {
 		Networks map[string]struct {
 			IPAddress string `json:"IPAddress"`
@@ -93,10 +100,11 @@ type netEntry struct {
 
 // cliContainer docker ps --format {{json .}} 条目。
 type cliContainer struct {
-	ID    string `json:"ID"`
-	Names string `json:"Names"`
-	Image string `json:"Image"`
-	State string `json:"State"`
+	ID     string            `json:"ID"`
+	Names  string            `json:"Names"`
+	Image  string            `json:"Image"`
+	State  string            `json:"State"`
+	Labels map[string]string `json:"Labels"`
 }
 
 // detectViaSock unix socket 上的 Docker Engine API。
@@ -133,6 +141,12 @@ func detectViaSock(ctx context.Context, sock string) ([]protocol.App, error) {
 			name = strings.TrimPrefix(c.Names[0], "/")
 		}
 		detail := map[string]any{"image": c.Image}
+		// 启动方式:带 compose 项目标签 = Docker Compose,否则视为 docker run
+		if _, compose := c.Labels["com.docker.compose.project"]; compose {
+			detail["run_mode"] = "compose"
+		} else {
+			detail["run_mode"] = "run"
+		}
 		if len(c.Ports) > 0 {
 			ports := make([]portEntry, 0, len(c.Ports))
 			for _, p := range c.Ports {
@@ -149,6 +163,16 @@ func detectViaSock(ctx context.Context, sock string) ([]protocol.App, error) {
 			detail["id"] = c.ID
 			// inspect 补全：挂载 / 网络 / 环境变量（失败降级，保持 list 级详情）
 			if insp := inspectContainer(ctx, client, c.ID); insp != nil {
+				// 启动命令与重启策略(容器进程定义,如实展示不拼 docker run 串)
+				if len(insp.Config.Entrypoint) > 0 {
+					detail["entrypoint"] = insp.Config.Entrypoint
+				}
+				if len(insp.Config.Cmd) > 0 {
+					detail["cmd"] = insp.Config.Cmd
+				}
+				if rp := insp.HostConfig.RestartPolicy.Name; rp != "" && rp != "no" {
+					detail["restart"] = rp
+				}
 				if len(insp.Mounts) > 0 {
 					ms := make([]mountEntry, 0, len(insp.Mounts))
 					for _, m := range insp.Mounts {
@@ -237,10 +261,19 @@ func detectViaCLI(ctx context.Context) ([]protocol.App, error) {
 		if name == "" {
 			name = shortID(c.ID)
 		}
+		detail := map[string]any{"image": c.Image, "id": c.ID, "run_mode": "run"}
+		if _, compose := c.Labels["com.docker.compose.project"]; compose {
+			detail["run_mode"] = "compose"
+			for k, v := range c.Labels {
+				if strings.HasPrefix(k, "com.docker.compose.") && v != "" {
+					detail[composeKey(k)] = v
+				}
+			}
+		}
 		apps = append(apps, protocol.App{
 			AppType: "docker", Name: name, Version: c.Image,
 			Status: containerState(c.State),
-			Detail: map[string]any{"image": c.Image, "id": c.ID},
+			Detail: detail,
 		})
 	}
 	return apps, nil

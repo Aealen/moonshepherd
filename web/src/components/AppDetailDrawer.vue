@@ -35,12 +35,56 @@ const envRows = computed(() => {
     return i > 0 ? { k: String(s).slice(0, i), v: String(s).slice(i + 1) } : { k: String(s), v: '' }
   })
 })
-// 兜底：未结构化展示的剩余字段（含 compose_* 等）
+// 兜底：未结构化展示的剩余字段
 const restEntries = computed<Array<[string, any]>>(() => {
   if (!props.app) return []
   const skip = new Set(['image', 'id', 'ports', 'mounts', 'networks', 'env',
-    'conf_files', 'conf_dir', 'config_candidates'])
+    'conf_files', 'conf_dir', 'config_candidates',
+    'run_mode', 'entrypoint', 'cmd', 'restart',
+    'compose_project', 'compose_service', 'compose_working_dir',
+    'compose_project_working_dir', 'compose_config_files', 'compose_project_config_files'])
   return Object.entries(props.app.detail ?? {}).filter(([k]) => !skip.has(k))
+})
+
+// ---------- Docker 启动方式(docs/06 应用详情) ----------
+
+// compose 标签 = Docker Compose;run_mode 由 Agent 探测写入,老数据回退看 compose_project
+const runMode = computed<'compose' | 'run' | undefined>(() => {
+  const d = props.app?.detail ?? {}
+  if (d.run_mode === 'compose' || d.compose_project) return 'compose'
+  if (d.run_mode === 'run') return 'run'
+  return undefined
+})
+const composeInfo = computed(() => {
+  if (runMode.value !== 'compose') return null
+  const d = props.app?.detail ?? {}
+  return {
+    project: d.compose_project ? String(d.compose_project) : '',
+    service: d.compose_service ? String(d.compose_service) : '',
+    workdir: d.compose_working_dir ?? d.compose_project_working_dir ?? '',
+    files: d.compose_project_config_files ?? d.compose_config_files ?? '',
+  }
+})
+// 启动命令:容器进程定义(Entrypoint/Cmd),如实展示不拼 docker run 串
+const startCmd = computed(() => {
+  const d = props.app?.detail ?? {}
+  const ep = Array.isArray(d.entrypoint) ? d.entrypoint.map(String) : []
+  const cmd = Array.isArray(d.cmd) ? d.cmd.map(String) : []
+  if (!ep.length && !cmd.length) return null
+  return { entrypoint: ep, cmd }
+})
+const restartPolicy = computed(() => {
+  const r = props.app?.detail?.restart
+  return r ? String(r) : ''
+})
+const cmdLines = computed<string[]>(() => {
+  const lines: string[] = []
+  if (startCmd.value) {
+    lines.push('ENTRYPOINT  ' + (startCmd.value.entrypoint.join(' ') || '(空)'))
+    lines.push('CMD         ' + (startCmd.value.cmd.join(' ') || '(空)'))
+  }
+  if (restartPolicy.value) lines.push('RESTART     ' + restartPolicy.value)
+  return lines
 })
 
 // ---------- 中间件(nginx/caddy)专属:配置文件区 ----------
@@ -127,14 +171,35 @@ const envCols = [
         <n-descriptions-item v-if="app.detail?.id" label="容器 ID">
           <span class="mono muted">{{ String(app.detail.id).slice(0, 12) }}</span>
         </n-descriptions-item>
-        <n-descriptions-item v-if="app.detail?.compose_project" label="Compose 项目">
-          <span class="mono">{{ app.detail.compose_project }}</span>
+        <n-descriptions-item label="启动方式" v-if="runMode">
+          <n-tag size="tiny" :bordered="false" :type="runMode === 'compose' ? 'info' : 'default'">
+            {{ runMode === 'compose' ? 'Docker Compose' : 'Docker Run' }}
+          </n-tag>
         </n-descriptions-item>
+        <template v-if="composeInfo">
+          <n-descriptions-item label="Compose 项目"><span class="mono">{{ composeInfo.project || '—' }}</span></n-descriptions-item>
+          <n-descriptions-item v-if="composeInfo.service" label="Compose 服务"><span class="mono">{{ composeInfo.service }}</span></n-descriptions-item>
+          <n-descriptions-item v-if="composeInfo.workdir" label="工作目录">
+            <span class="mono muted" style="font-size:12px; word-break:break-all">{{ composeInfo.workdir }}</span>
+          </n-descriptions-item>
+          <n-descriptions-item v-if="composeInfo.files" label="Compose 配置">
+            <span class="mono muted" style="font-size:12px; word-break:break-all">{{ composeInfo.files }}</span>
+          </n-descriptions-item>
+        </template>
         <n-descriptions-item v-if="nets.length" label="网络">
           <span class="mono" style="font-size:12px">{{ nets.map((n) => `${n.name}${n.ip ? ' (' + n.ip + ')' : ''}`).join('，') }}</span>
         </n-descriptions-item>
         <n-descriptions-item v-if="app.node_name" label="所属节点">{{ app.node_name }}（{{ fmtTime(app.detected_at) }} 探测）</n-descriptions-item>
       </n-descriptions>
+
+      <!-- Docker 启动命令/重启策略 -->
+      <template v-if="cmdLines.length">
+        <div style="display:flex; align-items:center; margin:0 0 8px">
+          <span style="font-weight:600">启动命令</span>
+          <span class="muted" style="font-size:12px; margin-left:8px">容器进程定义(inspect 实测)</span>
+        </div>
+        <pre class="term" style="padding:10px 14px; margin:0 0 18px">{{ cmdLines.join('\n') }}</pre>
+      </template>
 
       <!-- 中间件专属:配置文件区(发现→纳管工作流入口) -->
       <template v-if="isReverseProxy && confCandidates.length">
@@ -185,7 +250,7 @@ const envCols = [
 
 <style scoped>
 .conf-path { cursor: pointer; }
-.conf-path:hover { color: #99f0e4; text-decoration: underline; }
+.conf-path:hover { color: #eef1f5; text-decoration: underline; }
 
 /* 中间件配置候选条目:主配置带青色左边条 */
 .conf-item {
@@ -199,8 +264,8 @@ const envCols = [
   background: rgba(255, 255, 255, 0.02);
 }
 .conf-item.main {
-  border-color: rgba(110, 231, 216, 0.25);
-  background: rgba(110, 231, 216, 0.045);
-  box-shadow: inset 3px 0 0 rgba(110, 231, 216, 0.55);
+  border-color: rgba(238, 241, 245, 0.25);
+  background: rgba(238, 241, 245, 0.045);
+  box-shadow: inset 3px 0 0 rgba(238, 241, 245, 0.55);
 }
 </style>

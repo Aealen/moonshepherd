@@ -18,44 +18,53 @@ const online = ref<number | null>(null)
 const offline = ref<number | null>(null)
 const collapsed = ref(false)
 
-// 主题:暗夜牧场 —— 月光青主色 + 玻璃层次
+// 主题:暗色画廊 —— 单色分层表面 + 单一牧绿强调 + 胶囊控件
 const themeOverrides: GlobalThemeOverrides = {
   common: {
-    primaryColor: '#6ee7d8',
-    primaryColorHover: '#99f0e4',
-    primaryColorPressed: '#4fd0bf',
-    primaryColorSuppl: '#99f0e4',
-    infoColor: '#7ab8ff',
-    warningColor: '#f2c97d',
-    errorColor: '#ff8f9a',
-    borderRadius: '8px',
-    bodyColor: '#0a0b10',
-    cardColor: '#151823',
-    modalColor: '#171a26',
-    popoverColor: '#1b1f2e',
-    inputColor: '#1b1f2e',
-    tableColor: '#10121a',
-    dividerColor: '#232838',
-    borderColor: '#2e3550',
-    textColor1: '#eef1f8',
-    textColor2: '#9aa3b8',
-    textColor3: '#5d6579',
+    primaryColor: '#eef1f5',
+    primaryColorHover: '#ffffff',
+    primaryColorPressed: '#d5dae2',
+    primaryColorSuppl: '#ffffff',
+    infoColor: '#a9b1bd',
+    successColor: '#8b96a8',
+    warningColor: '#e3c47f',
+    errorColor: '#ef9d93',
+    borderRadius: '10px',
+    bodyColor: '#0a0b0d',
+    cardColor: '#15181d',
+    modalColor: '#15181d',
+    popoverColor: '#1b1f25',
+    inputColor: '#1b1f25',
+    tableColor: '#101216',
+    dividerColor: '#23272e',
+    borderColor: '#2f343c',
+    textColor1: '#eef1f5',
+    textColor2: '#a4abb8',
+    textColor3: '#676e7a',
     fontWeightStrong: '600',
   },
   Button: {
-    textColorPrimary: '#0a0b10',
+    textColorPrimary: '#0d100f',
     fontWeight: '600',
+    borderRadiusMedium: '999px',
+    borderRadiusSmall: '999px',
+    borderRadiusTiny: '999px',
+    borderRadiusLarge: '999px',
   },
   Menu: {
-    itemColorActive: 'rgba(110, 231, 216, 0.08)',
+    borderRadius: '10px',
+    itemColorActive: 'rgba(238, 241, 245, 0.08)',
     itemColorHover: 'rgba(255, 255, 255, 0.04)',
-    itemTextColorActive: '#99f0e4',
-    itemTextColorActiveHover: '#99f0e4',
-    itemIconColorActive: '#99f0e4',
-    itemTextColorChildActive: '#99f0e4',
-    itemIconColorChildActive: '#99f0e4',
+    itemTextColorActive: '#ffffff',
+    itemTextColorActiveHover: '#ffffff',
+    itemIconColorActive: '#ffffff',
+    itemTextColorChildActive: '#ffffff',
+    itemIconColorChildActive: '#ffffff',
   },
-  Tag: { borderRadius: '99px' },
+  Tag: { borderRadius: '999px' },
+  Input: { borderRadius: '10px' },
+  Card: { borderRadius: '14px' },
+  Dialog: { borderRadius: '16px' },
 }
 
 function renderIcon(icon: any) {
@@ -171,13 +180,14 @@ if (!isLogin.value) {
               </div>
               <n-dropdown :options="userMenu" @select="logout">
                 <n-button quaternary size="small" style="gap:9px; padding:0 10px;">
-                  <n-avatar round :size="26" style="background:linear-gradient(135deg,#6ee7d8,#4a86c8); color:#0a0b10; font-weight:700">M</n-avatar>
+                  <n-avatar round :size="26" style="background:linear-gradient(135deg,#f4f6f9,#a7aebc); color:#0a0b0d; font-weight:700">M</n-avatar>
                   <span style="font-size:13px">admin</span>
                 </n-button>
               </n-dropdown>
             </n-layout-header>
-            <n-layout-content style="height:calc(100vh - 52px); overflow:auto">
-              <router-view :key="route.fullPath" />
+            <n-layout-content style="height:calc(100vh - 52px); overflow:auto; position:relative">
+              <div class="starfield" aria-hidden="true"></div>
+              <router-view :key="route.fullPath" style="position:relative; z-index:1" />
             </n-layout-content>
           </n-layout>
         </n-layout>
@@ -193,11 +203,11 @@ if (!isLogin.value) {
   gap: 11px;
   padding: 20px 20px 16px;
 }
-.brand-mark { width: 30px; height: 30px; filter: drop-shadow(0 0 8px rgba(110, 231, 216, 0.35)); }
+.brand-mark { width: 30px; height: 30px; }
 .brand-name { font-weight: 800; font-size: 17px; letter-spacing: 1px; line-height: 1.2; }
 .brand-en {
   font-size: 10.5px;
-  color: #5d6579;
+  color: #676e7a;
   letter-spacing: 1.4px;
   text-transform: uppercase;
 }
@@ -206,14 +216,13 @@ if (!isLogin.value) {
   bottom: 14px; left: 0; right: 0;
   text-align: center;
   font-size: 10.5px;
-  color: #3e4456;
+  color: #4a505c;
   letter-spacing: 1px;
   display: flex; align-items: center; justify-content: center; gap: 6px;
 }
 .foot-dot {
   width: 6px; height: 6px; border-radius: 50%;
-  background: #6ee7d8; opacity: 0.6;
-  box-shadow: 0 0 6px rgba(110, 231, 216, 0.6);
+  background: #63d3a6; opacity: 0.55;
 }
 .fade-enter-active, .fade-leave-active { transition: opacity 0.15s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
@@ -228,26 +237,26 @@ if (!isLogin.value) {
   font-family: "JetBrains Mono", Consolas, monospace;
 }
 .stat-chip.online {
-  color: #99f0e4;
-  background: rgba(110, 231, 216, 0.09);
-  border: 1px solid rgba(110, 231, 216, 0.22);
+  color: #eef1f5;
+  background: rgba(238, 241, 245, 0.07);
+  border: 1px solid rgba(238, 241, 245, 0.2);
 }
 .stat-chip.offline {
-  color: #f2c97d;
-  background: rgba(242, 201, 125, 0.08);
-  border: 1px solid rgba(242, 201, 125, 0.2);
+  color: #e3c47f;
+  background: rgba(227, 196, 127, 0.08);
+  border: 1px solid rgba(227, 196, 127, 0.2);
 }
 .stat-dot {
   width: 7px; height: 7px; border-radius: 50%;
-  background: #f2c97d;
+  background: #e3c47f;
 }
 .stat-chip.online .stat-dot {
-  background: #6ee7d8;
-  box-shadow: 0 0 8px rgba(110, 231, 216, 0.7);
+  background: #63d3a6;
+  box-shadow: 0 0 6px rgba(99, 211, 166, 0.6);
 }
 .pulse { animation: breathe 2.4s ease-in-out infinite; }
 @keyframes breathe {
-  0%, 100% { box-shadow: 0 0 4px rgba(110, 231, 216, 0.5); }
-  50% { box-shadow: 0 0 12px rgba(110, 231, 216, 0.95); }
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
 }
 </style>
