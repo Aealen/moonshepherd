@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+      <path id="g1horn" d="M 36 36 C 31 17 22 11 15 14 C 6 18 2 28 5 38 C 7 47 15 57 23 60 C 19 57 14.5 49 14 41 C 15 33 22 29 28 31 C 31 32 33 35 33 40 Z" fill="currentColor"/>
+      <use href="#g1horn" transform="translate(100 0) scale(-1 1)" fill="currentColor"/>
+      <path d="M 50 31 C 45 28 40 27 36 27.5 C 31 28 29 31 29 36 L 27.5 43 Q 28 45 31 46.5 Q 38 60 44 71 Q 47 76.5 50 79.5 Q 53 76.5 56 71 Q 62 60 69 46.5 Q 72 45 72.5 43 L 71 36 C 71 31 69 28 64 27.5 C 60 27 55 28 50 31 Z" fill="currentColor"/>
+      <path id="g1eye" d="M 42 43.5 C 45.5 43.5 47 45.8 45.5 48.5 C 44.4 50.5 43.5 52.5 47 58 C 42.5 55 39 51 37.5 47.5 C 36.8 45 39 43.5 42 43.5 Z" fill="#0a0b0d"/>
+      <use href="#g1eye" transform="translate(100 0) scale(-1 1)" fill="#0a0b0d"/>
+      <g stroke="#0a0b0d" stroke-width="1.8" stroke-linecap="round" fill="none">
+        <path d="M 45 64 L 50 67 L 55 64"/>
+        <path d="M 50 67 L 50 77"/>
+      </g>
+    </svg>
