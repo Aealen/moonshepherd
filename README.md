@@ -1,6 +1,9 @@
 <div align="center">
 
-<img src="web/src/assets/logo-64.png" width="88" alt="牧云 MoonShepherd">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/logo-dark.png">
+  <img src="docs/brand/logo-light.png" width="88" alt="牧云 MoonShepherd">
+</picture>
 
 # 牧云 MoonShepherd
 
@@ -23,11 +26,20 @@
 |---|---|
 | ![主面板](docs/screenshots/dashboard.png) | ![登录页](docs/screenshots/login.png) |
 
+## 🗺️ 放牧场景
+
+| 场景 | 牧云怎么帮你 |
+|---|---|
+| 🏠 **家庭 NAS / Unraid** | BusyBox 刺头也能管——Agent 以容器形态常驻，挂载 docker.sock 获得完整容器能力，不依赖 systemd |
+| ☁️ **公网云主机** | 一条 `install.sh` 接入；Agent 只出不进、不开入站端口，面板侧前置 TLS 即可公网运营 |
+| 🏢 **多机房 / 异地节点** | 所有节点一块看板：心跳、指标、应用清单实时汇聚，跨节点指令与文件流转全程审计 |
+| 💻 **本地开发机** | Web 终端直达 PTY，浏览器里看日志、改配置、跑命令，不用来回切窗口 |
+
 ## 🐑 功能总览
 
 ### 节点牧群
 - **主动外连纳管**——Agent 以 Docker 容器 / 静态二进制 / systemd 等多种形态部署，主动 WSS 外连面板，**无需开放节点入站端口**；HMAC 挑战式认证
-- **心跳与指标**——CPU / 内存 / 磁盘 / 网络实时心跳，在线/离线状态即时刷新
+- **心跳与指标**——CPU / 内存 / 磁盘 / 网络实时心跳，在线/离线状态即时刷新；节点总览顶部还有**全牧群网络吞吐曲线**（近 1 小时跨节点聚合，悬停逐桶读数）
 - **一键接入**——面板发放注册 Token 后，目标节点上一条 `install.sh` 完成安装注册；Agent 自带**自更新**：旁路写入不动旧二进制、失败自动回滚、systemd / 裸跑形态自适应，防失联三重保障
 
 ### 应用感知与容器
@@ -36,12 +48,16 @@
 - **容器操作**——启动 / 停止 / 重启 / 拉取镜像（白名单，无删除），**容器日志实时流**回浏览器
 - **配置发现与纳管**——Nginx / Caddy 配置文件自动探测，纳管后在线编辑、版本化下发，自带校验与失败自动回滚
 
+![应用中心](docs/screenshots/apps.png)
+
 ### 运维与安全
-- **Web 终端**——浏览器直达节点 PTY，窗口尺寸自适应，全程审计
+- **Web 终端**——浏览器直达节点 PTY，vi / top 全可用；连接计时、一键全屏（Esc 退出）、常用命令速插条（只插入不执行）、会话溯源水印，输入全程审计
 - **指令中心**——跨节点远程命令执行，输出可查，全程审计
 - **文件管理器**——目录树浏览、分片上传下载、在线编辑、重命名 / 移动 / 删除，全部变更留痕
 - **操作审计**——只读、不可删除的全量操作审计
 - **公网级安全**——TLS 强制、分层威胁模型、最小权限 MCP 授权（见 [安全设计](docs/05-安全设计.md)）
+
+![指令中心](docs/screenshots/commands.png)
 
 ### 🤖 让 AI 替你放牧（MCP）
 内置 **MCP Server（Streamable HTTP）**，Claude Desktop 等 AI 客户端可安全操控牧云：
@@ -50,6 +66,8 @@
 - **两级授权**：能力（scope，决定"能做什么"）× 范围（节点 → 应用，决定"对哪些对象做"），随时编辑即时生效
 - **Key 管理**——面板创建 / 启停 / 吊销，高危能力（命令执行）创建时二次确认
 - **全程审计**——授权范围外的请求被拒绝并记录
+
+![MCP Keys](docs/screenshots/mcp.png)
 
 ## 🚀 快速开始
 
@@ -78,6 +96,14 @@ curl -fsSL http://<面板地址>/install.sh | bash -s -- --token rt_xxx
 ### Agent 自更新
 
 面板「节点」页可一键下发升级（按节点架构自动匹配二进制），Agent 端校验 sha256 → 旁路写入 → 平滑换身 → 失败自动回滚，升级期间不失联。
+
+### 环境要求
+
+| 组件 | 要求 |
+|---|---|
+| 面板 | 任意能跑 Docker 的 Linux 主机 / NAS（amd64 / arm64），SQLite 内嵌、无外部依赖 |
+| Agent | Linux amd64 / arm64 / armv7；标准发行版走 systemd，BusyBox 环境（Unraid 等）走 Docker 容器或裸二进制 |
+| 浏览器 | Chrome / Edge / Firefox / Safari 现代版本 |
 
 ## 🤖 AI 客户端接入（MCP）
 
