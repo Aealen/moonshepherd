@@ -265,6 +265,9 @@ export function mockPlugin() {
           }
           return send(json({ points: pts, bucket }))
         }
+        // 终端会话:返回假 session_id,前端进 live 态(UI 走查用;无 WS 回显,终端内容为空)
+        if (/^\/api\/v1\/nodes\/n_\w+\/sessions$/.test(url) && req.method === 'POST') return send(json({ session_id: 'mock-sess-1' }))
+        if (/^\/api\/v1\/nodes\/n_\w+\/sessions\/[^/]+$/.test(url) && req.method === 'DELETE') return send(json({}))
         return next() // 其余路径放行(404 由后端语义兜底)
       })
     },
