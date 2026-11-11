@@ -117,6 +117,8 @@ CREATE TABLE IF NOT EXISTS metrics (
     load1      REAL NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_metrics_node ON metrics (node_id, ts);
+-- 牧群吞吐时序按 ts 窗口过滤聚合(net-series),独立于 node 前导索引
+CREATE INDEX IF NOT EXISTS idx_metrics_ts ON metrics (ts);
 
 -- 面板侧操作审计（不可删除）
 CREATE TABLE IF NOT EXISTS audit_logs (

@@ -131,6 +131,7 @@ func (s *Server) buildRouter() http.Handler {
 			auth.Put("/auth/password", s.handleChangePassword)
 
 			auth.Get("/nodes", s.handleListNodes)
+			auth.Get("/metrics/net-series", s.handleNetSeries)
 			auth.Post("/nodes/registration-tokens", s.handleCreateToken)
 			auth.Get("/nodes/registration-tokens", s.handleListTokens)
 			auth.Delete("/nodes/registration-tokens/{id}", s.handleRevokeToken)

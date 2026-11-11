@@ -8,6 +8,7 @@ import {
 } from 'naive-ui'
 import { api, fmtAgo, fmtTime, type Node, type Page, type RegistrationToken } from '../api'
 import { onEvent } from '../api/ws'
+import NetSeriesCard from '../components/NetSeriesCard.vue'
 
 const router = useRouter()
 const message = useMessage()
@@ -89,7 +90,13 @@ const columns: DataTableColumns<Node> = [
     title: '节点', key: 'name', minWidth: 180,
     render: (row) => h('div', { style: 'cursor:pointer', onClick: () => router.push(`/nodes/${row.id}`) }, [
       h('div', { style: 'font-weight:600' }, row.name),
-      h('div', { class: 'muted', style: 'font-size:12px' }, `${row.hostname} · ${row.os_name} ${row.os_version} (${row.os_arch})`),
+      h('div', { class: 'muted', style: 'font-size:12px; margin-top:3px' }, [
+        h('span', {
+          class: 'host-chip', title: '点击复制主机名',
+          onClick: (e: MouseEvent) => { e.stopPropagation(); copy(row.hostname) },
+        }, row.hostname),
+        ` · ${row.os_name} ${row.os_version} (${row.os_arch})`,
+      ]),
     ]),
   },
   { title: '状态', key: 'status', width: 90, render: (row) => statusTag(row.status, row.enabled) },
@@ -298,6 +305,8 @@ onUnmounted(() => off?.())
       <n-button type="primary" size="small" class="glow-hover" @click="openTokenModal">＋ 纳管新节点</n-button>
     </div>
 
+    <net-series-card />
+
     <n-space style="margin-bottom:14px" align="center">
       <n-select
         v-model:value="statusFilter" size="small" style="width:130px" clearable placeholder="状态"
@@ -382,4 +391,22 @@ onUnmounted(() => off?.())
   0%, 100% { box-shadow: 0 0 3px rgba(99, 211, 166, 0.5); }
   50% { box-shadow: 0 0 11px rgba(99, 211, 166, 0.95); }
 }
+
+/* 主机名 chip:淡底等宽,hover 亮起并带复制暗示,点击复制到剪贴板 */
+.host-chip {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  background: rgba(238, 241, 245, 0.06);
+  border: 1px solid rgba(238, 241, 245, 0.1);
+  border-radius: 5px;
+  padding: 1px 6px;
+  color: var(--text-2);
+  cursor: copy;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.host-chip:hover {
+  background: rgba(238, 241, 245, 0.12);
+  color: #eef1f5;
+  border-color: rgba(238, 241, 245, 0.25);
+}
+.host-chip:hover::after { content: " ⧉"; font-size: 11px; }
 </style>

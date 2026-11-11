@@ -150,3 +150,34 @@ func (s *Store) LatestMetric(ctx context.Context, nodeID string) (*MetricIn, int
 func (s *Store) PurgeOldMetrics(ctx context.Context, retention time.Duration) {
 	_, _ = s.DB.ExecContext(ctx, "DELETE FROM metrics WHERE ts <= ?", now()-int64(retention.Seconds()))
 }
+
+// NetPoint 牧群级网络吞吐时序点（跨节点聚合）。
+type NetPoint struct {
+	TS int64   `json:"ts"` // 桶起点，unix 秒
+	Rx float64 `json:"rx"` // 全牧群下行速率 KB/s
+	Tx float64 `json:"tx"` // 全牧群上行速率 KB/s
+}
+
+// NetSeries 跨节点网络吞吐时序：windowS 秒窗口、bucketS 秒分桶。
+// 先按"节点×桶"取均值再跨节点求和——各节点心跳节奏不同，直接 SUM 会放重心跳更密的节点。
+func (s *Store) NetSeries(ctx context.Context, windowS, bucketS int64) ([]NetPoint, error) {
+	rows, err := s.DB.QueryContext(ctx, `
+		SELECT bucket, SUM(rx), SUM(tx) FROM (
+			SELECT (ts / ?) * ? AS bucket, node_id, AVG(net_rx) AS rx, AVG(net_tx) AS tx
+			FROM metrics WHERE ts >= ?
+			GROUP BY bucket, node_id
+		) GROUP BY bucket ORDER BY bucket`, bucketS, bucketS, now()-windowS)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	pts := make([]NetPoint, 0, 128)
+	for rows.Next() {
+		var p NetPoint
+		if err := rows.Scan(&p.TS, &p.Rx, &p.Tx); err != nil {
+			return nil, err
+		}
+		pts = append(pts, p)
+	}
+	return pts, rows.Err()
+}

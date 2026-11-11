@@ -251,6 +251,20 @@ export function mockPlugin() {
             { id: 1, node_id: mNodeConfigs[1], app_type: 'nginx', target_path: '/etc/nginx/nginx.conf', latest_version: 3, status: 'in_sync', updated_at: now() - 3600 },
           ]))
         }
+        // 牧群网络吞吐:60 分钟窗、30s 桶;基线正弦+低频突发,给折线卡一条"活的"曲线
+        if (url === '/api/v1/metrics/net-series' && req.method === 'GET') {
+          const bucket = 30
+          const start = Math.floor(now() / bucket) * bucket - 60 * 60
+          const pts = []
+          let burst = 0
+          for (let t = start; t <= now(); t += bucket) {
+            if (Math.random() < 0.03) burst = 40 + Math.random() * 120
+            burst *= 0.86
+            const base = 180 + 130 * Math.sin((t / 1800) * Math.PI) + Math.random() * 45
+            pts.push({ ts: t, rx: Math.max(8, base + burst), tx: Math.max(6, base * 0.22 + burst * 0.35 + Math.random() * 20) })
+          }
+          return send(json({ points: pts, bucket }))
+        }
         return next() // 其余路径放行(404 由后端语义兜底)
       })
     },
