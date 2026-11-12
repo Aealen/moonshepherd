@@ -3,6 +3,7 @@
 package agentd
 
 import (
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -23,6 +24,7 @@ func collectHeartbeat() protocol.HeartbeatPayload {
 	if d, ok := diskSnapshot(); ok {
 		p.Disk = d
 	}
+	p.Net = netSnapshot()
 	p.UptimeS = uptime()
 	return p
 }
@@ -126,4 +128,50 @@ func uptime() int64 {
 	}
 	v, _ := strconv.ParseFloat(f[0], 64)
 	return int64(v)
+}
+
+// net 快照：两次 /proc/net/dev 采样差值折算 KB/s（全网卡聚合，docs/04 §5.1）。
+// 基准是上一次心跳（约 30s 间隔，速率平滑）；首次心跳无基准返回 nil，面板按缺省容缺。
+// 排除回环与宿主机上的容器虚拟接口（docker0/veth/br-），避免流量重复计入。
+var lastNet struct {
+	ts     time.Time
+	rx, tx uint64
+}
+
+func netSnapshot() *protocol.NetSnapshot {
+	b, err := os.ReadFile("/proc/net/dev")
+	if err != nil {
+		return nil
+	}
+	var rx, tx uint64
+	for _, line := range strings.Split(string(b), "\n") {
+		idx := strings.Index(line, ":")
+		if idx < 0 {
+			continue
+		}
+		name := strings.TrimSpace(line[:idx])
+		if name == "lo" || strings.HasPrefix(name, "docker") ||
+			strings.HasPrefix(name, "veth") || strings.HasPrefix(name, "br-") {
+			continue
+		}
+		// /proc/net/dev 列序：rx bytes 在第 0 列，tx bytes 在第 8 列
+		f := strings.Fields(line[idx+1:])
+		if len(f) < 9 {
+			continue
+		}
+		rxb, _ := strconv.ParseUint(f[0], 10, 64)
+		txb, _ := strconv.ParseUint(f[8], 10, 64)
+		rx += rxb
+		tx += txb
+	}
+	now := time.Now()
+	if lastNet.ts.IsZero() || !now.After(lastNet.ts) {
+		lastNet.ts, lastNet.rx, lastNet.tx = now, rx, tx
+		return nil
+	}
+	sec := now.Sub(lastNet.ts).Seconds()
+	rxKBps := math.Max(0, float64(rx-lastNet.rx)/sec/1024) // 计数器回绕/接口重建时取 0
+	txKBps := math.Max(0, float64(tx-lastNet.tx)/sec/1024)
+	lastNet.ts, lastNet.rx, lastNet.tx = now, rx, tx
+	return &protocol.NetSnapshot{RxKBps: rxKBps, TxKBps: txKBps}
 }

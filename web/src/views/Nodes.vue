@@ -105,8 +105,9 @@ const columns: DataTableColumns<Node> = [
     render: (row) => {
       if (!row.agent_version) return h('span', { class: 'muted' }, '—')
       const outdated = row.status === 'online' && panelVersion.value && row.agent_version !== panelVersion.value
+      // 单行排布:版本号中性色,「待升级」徽章独立承载语义(避免色+徽双重强调与折行撑高行)
       return h('div', { class: 'ver-cell' }, [
-        h('span', { class: 'mono ' + (outdated ? 'ver-stale' : 'muted') }, row.agent_version),
+        h('span', { class: 'mono muted' }, row.agent_version),
         outdated ? h('span', { class: 'ver-badge', title: `面板 ${panelVersion.value},操作列可一键升级` }, '待升级') : null,
       ])
     },
@@ -255,8 +256,7 @@ onUnmounted(() => off?.())
 <style>
 /* Agent 版本列 + 行菜单:数据表 render 函数创建的元素不带 scoped 属性,
    样式须放非 scoped 块才能命中(类名沿用,仅本页使用) */
-.ver-cell { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; padding: 2px 0; }
-.ver-stale { color: #e3c47f; }
+.ver-cell { display: flex; flex-direction: row; gap: 6px; align-items: center; padding: 2px 0; white-space: nowrap; }
 .ver-badge.warn {
   background: rgba(157, 165, 180, 0.1);
   color: #a4abb8;
@@ -345,8 +345,7 @@ onUnmounted(() => off?.())
         <div style="font-weight:600; margin-bottom:8px">在目标机器执行（二进制形态）：</div>
         <div class="term" style="margin-bottom:10px">{{ installCmd() }}</div>
         <div class="muted" style="font-size:12.5px; margin-bottom:8px">
-          Unraid / Docker 机用容器形态：<code>docker run -d --restart unless-stopped -e HERD_SERVER=… -e HERD_TOKEN=… herd/shepherd</code>
-          （详见 docs/01 §3.1 挂载清单）
+          Unraid 等无 systemd 环境直接执行同一条命令：install.sh 自动落二进制到 <code>/mnt/user/herd-workdir</code> 并生成 User Scripts 自启脚本（宿主机直跑，Docker 探测零配置）
         </div>
         <n-space>
           <n-button size="small" @click="copy(freshToken)">复制 Token</n-button>

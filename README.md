@@ -30,7 +30,7 @@
 
 | 场景 | 牧云怎么帮你 |
 |---|---|
-| 🏠 **家庭 NAS / Unraid** | BusyBox 刺头也能管——Agent 以容器形态常驻，挂载 docker.sock 获得完整容器能力，不依赖 systemd |
+| 🏠 **家庭 NAS / Unraid** | BusyBox 刺头也能管——裸二进制宿主机直跑 + User Scripts 自启，Docker 探测零配置直连、进程级感知完整，不依赖 systemd |
 | ☁️ **公网云主机** | 一条 `install.sh` 接入；Agent 只出不进、不开入站端口，面板侧前置 TLS 即可公网运营 |
 | 🏢 **多机房 / 异地节点** | 所有节点一块看板：心跳、指标、应用清单实时汇聚，跨节点指令与文件流转全程审计 |
 | 💻 **本地开发机** | Web 终端直达 PTY，浏览器里看日志、改配置、跑命令，不用来回切窗口 |
@@ -90,7 +90,7 @@ curl -fsSL http://<面板地址>/install.sh | bash -s -- --token rt_xxx
 ```
 
 - **标准 Linux**：安装为 systemd 服务
-- **Unraid 等 BusyBox 环境**：Docker 容器形态（挂载 `docker.sock` 获得完整容器能力）
+- **Unraid 等 BusyBox 环境**：裸二进制落 `/mnt/user/herd-workdir`，自动生成 User Scripts 自启脚本（宿主机直跑，Docker 探测与进程感知零额外配置）
 - **公网面板**：节点同样只出不进；面板侧请前置 TLS（详见 [安全设计](docs/05-安全设计.md)）
 
 ### Agent 自更新
@@ -102,7 +102,7 @@ curl -fsSL http://<面板地址>/install.sh | bash -s -- --token rt_xxx
 | 组件 | 要求 |
 |---|---|
 | 面板 | 任意能跑 Docker 的 Linux 主机 / NAS（amd64 / arm64），SQLite 内嵌、无外部依赖 |
-| Agent | Linux amd64 / arm64 / armv7；标准发行版走 systemd，BusyBox 环境（Unraid 等）走 Docker 容器或裸二进制 |
+| Agent | Linux amd64 / arm64 / armv7，宿主机直跑；标准发行版走 systemd，BusyBox 环境（Unraid 等）走裸二进制 + User Scripts 自启 |
 | 浏览器 | Chrome / Edge / Firefox / Safari 现代版本 |
 
 ## 🤖 AI 客户端接入（MCP）
@@ -131,8 +131,8 @@ Header:  Authorization: Bearer mcp_xxx…（面板「MCP Keys」创建，仅显�
         ┌───────────────────┴──────────────────┐
         │                                      │
   节点A Unraid                            节点B 阿里云ECS
-  Agent=Docker容器(挂docker.sock)          Agent=systemd(install.sh 一键)
-  (备选:裸二进制+UserScripts)              (备选:裸二进制)
+  Agent=裸二进制(User Scripts自启)          Agent=systemd(install.sh 一键)
+  (宿主机直跑,零挂载直连docker.sock)        (备选:裸二进制)
 ```
 
 ## 📚 设计文档
