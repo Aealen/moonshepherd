@@ -38,9 +38,12 @@ const envRows = computed(() => {
 // 兜底：未结构化展示的剩余字段
 const restEntries = computed<Array<[string, any]>>(() => {
   if (!props.app) return []
-  const skip = new Set(['image', 'id', 'ports', 'mounts', 'networks', 'env',
+  const skip = new Set(['image', 'id', 'ports', 'mounts', 'networks', 'env', 'user_env',
     'conf_files', 'conf_dir', 'config_candidates',
     'run_mode', 'entrypoint', 'cmd', 'restart',
+    'name', 'hostname', 'user', 'workdir', 'healthcheck', 'privileged', 'devices',
+    'cap_add', 'cap_drop', 'extra_hosts', 'dns', 'sysctls', 'ulimits',
+    'memory', 'nano_cpus', 'network_mode', 'labels',
     'compose_project', 'compose_service', 'compose_working_dir',
     'compose_project_working_dir', 'compose_config_files', 'compose_project_config_files'])
   return Object.entries(props.app.detail ?? {}).filter(([k]) => !skip.has(k))
@@ -86,6 +89,64 @@ const cmdLines = computed<string[]>(() => {
   if (restartPolicy.value) lines.push('RESTART     ' + restartPolicy.value)
   return lines
 })
+
+// ---------- 重建参考:由 inspect 实测配置逆向合成等价 docker run ----------
+// 非原始命令(Docker 引擎不存命令行);命名卷显示落地路径,env 取运行时注入部分(user_env)。
+const runCmdLines = computed<string[] | null>(() => {
+  if (runMode.value !== 'run') return null // compose 场景有自己的编排定义,不合成
+  const d: any = props.app?.detail ?? {}
+  const img = d.image ? String(d.image) : ''
+  if (!img) return null
+  const args: string[] = []
+  if (d.name) args.push(`--name ${d.name}`)
+  if (d.restart) args.push(`--restart ${d.restart}`)
+  if (d.hostname) args.push(`--hostname ${d.hostname}`)
+  if (d.user) args.push(`--user ${d.user}`)
+  if (d.workdir) args.push(`--workdir ${d.workdir}`)
+  if (d.network_mode) args.push(`--network ${d.network_mode}`)
+  if (d.privileged) args.push('--privileged')
+  for (const p of Array.isArray(d.ports) ? d.ports : []) {
+    if (p?.public) {
+      const ip = p.ip && p.ip !== '0.0.0.0' ? `${p.ip}:` : ''
+      args.push(`-p ${ip}${p.public}:${p.private}/${p.type ?? 'tcp'}`)
+    }
+  }
+  for (const m of Array.isArray(d.mounts) ? d.mounts : []) {
+    if (m?.source && m?.dest) args.push(`-v ${m.source}:${m.dest}${m.rw === false ? ':ro' : ''}`)
+  }
+  // env:优先 user_env(运行时注入),老 Agent 无此字段回退全量 env 并剔除系统内置噪音
+  const envs = Array.isArray(d.user_env) && d.user_env.length ? d.user_env : (Array.isArray(d.env) ? d.env : [])
+  for (const e of envs) {
+    const s = String(e)
+    if (s && !s.startsWith('PATH=')) args.push(`-e ${s}`)
+  }
+  if (d.memory) args.push(`--memory ${fmtMem(Number(d.memory))}`)
+  if (d.nano_cpus) args.push(`--cpus ${Number(d.nano_cpus) / 1e9}`)
+  for (const dv of Array.isArray(d.devices) ? d.devices : []) {
+    if (dv?.PathOnHost) args.push(`--device ${dv.PathOnHost}:${dv.PathInContainer ?? dv.PathOnHost}`)
+  }
+  for (const c of Array.isArray(d.cap_add) ? d.cap_add : []) args.push(`--cap-add ${c}`)
+  for (const h of Array.isArray(d.extra_hosts) ? d.extra_hosts : []) args.push(`--add-host ${h}`)
+  for (const s of Array.isArray(d.dns) ? d.dns : []) args.push(`--dns ${s}`)
+  if (!args.length) return null
+
+  // 按参数边界折行(Drawer 终端块约 64 字符/行,行尾续行符,免横向滚动)
+  const lines: string[] = []
+  let cur = 'docker run -d'
+  for (const a of args) {
+    if ((cur + ' ' + a).length > 64) {
+      lines.push(cur + ' \\')
+      cur = '    ' + a
+    } else {
+      cur += ' ' + a
+    }
+  }
+  lines.push(cur + ' ' + img)
+  return lines
+})
+function fmtMem(bytes: number): string {
+  return bytes >= 1 << 30 ? `${Math.round(bytes / (1 << 30))}g` : `${Math.round(bytes / (1 << 20))}m`
+}
 
 // ---------- 中间件(nginx/caddy)专属:配置文件区 ----------
 
@@ -155,7 +216,7 @@ const envCols = [
   <n-drawer :show="show" :width="640" placement="right" @update:show="emit('update:show', $event)">
     <n-drawer-content v-if="app" closable>
       <template #header>
-        <span style="font-weight:700">{{ app.app_name }}</span>
+        <span style="font-weight:600">{{ app.app_name }}</span>
         <n-tag size="tiny" round :bordered="false" style="margin-left:10px"
           :type="app.status === 'running' ? 'success' : app.status === 'stopped' ? 'warning' : 'default'">
           {{ app.status === 'running' ? '运行中' : app.status === 'stopped' ? '已停止' : app.status }}
@@ -191,6 +252,17 @@ const envCols = [
         </n-descriptions-item>
         <n-descriptions-item v-if="app.node_name" label="所属节点">{{ app.node_name }}（{{ fmtTime(app.detected_at) }} 探测）</n-descriptions-item>
       </n-descriptions>
+
+      <!-- 重建参考:逆向合成的等价 docker run 命令 -->
+      <template v-if="runCmdLines">
+        <div style="display:flex; align-items:baseline; margin:0 0 8px">
+          <span style="font-weight:600">重建参考</span>
+          <span class="muted" style="font-size:12px; margin-left:8px">
+            等价 docker run · 由容器实测配置逆向合成(非原始命令;命名卷显示落地路径)
+          </span>
+        </div>
+        <pre class="term" style="padding:10px 14px; margin:0 0 18px; user-select:all; word-break:normal; white-space:pre; overflow-x:auto">{{ runCmdLines.join('\n') }}</pre>
+      </template>
 
       <!-- Docker 启动命令/重启策略 -->
       <template v-if="cmdLines.length">

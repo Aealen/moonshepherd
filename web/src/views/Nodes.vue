@@ -8,6 +8,7 @@ import {
 } from 'naive-ui'
 import { api, fmtAgo, fmtTime, type Node, type Page, type RegistrationToken } from '../api'
 import { onEvent } from '../api/ws'
+import NetSeriesCard from '../components/NetSeriesCard.vue'
 
 const router = useRouter()
 const message = useMessage()
@@ -89,7 +90,13 @@ const columns: DataTableColumns<Node> = [
     title: '节点', key: 'name', minWidth: 180,
     render: (row) => h('div', { style: 'cursor:pointer', onClick: () => router.push(`/nodes/${row.id}`) }, [
       h('div', { style: 'font-weight:600' }, row.name),
-      h('div', { class: 'muted', style: 'font-size:12px' }, `${row.hostname} · ${row.os_name} ${row.os_version} (${row.os_arch})`),
+      h('div', { class: 'muted', style: 'font-size:12px; margin-top:3px' }, [
+        h('span', {
+          class: 'host-chip', title: '点击复制主机名',
+          onClick: (e: MouseEvent) => { e.stopPropagation(); copy(row.hostname) },
+        }, row.hostname),
+        ` · ${row.os_name} ${row.os_version} (${row.os_arch})`,
+      ]),
     ]),
   },
   { title: '状态', key: 'status', width: 90, render: (row) => statusTag(row.status, row.enabled) },
@@ -98,8 +105,9 @@ const columns: DataTableColumns<Node> = [
     render: (row) => {
       if (!row.agent_version) return h('span', { class: 'muted' }, '—')
       const outdated = row.status === 'online' && panelVersion.value && row.agent_version !== panelVersion.value
+      // 单行排布:版本号中性色,「待升级」徽章独立承载语义(避免色+徽双重强调与折行撑高行)
       return h('div', { class: 'ver-cell' }, [
-        h('span', { class: 'mono ' + (outdated ? 'ver-stale' : 'muted') }, row.agent_version),
+        h('span', { class: 'mono muted' }, row.agent_version),
         outdated ? h('span', { class: 'ver-badge', title: `面板 ${panelVersion.value},操作列可一键升级` }, '待升级') : null,
       ])
     },
@@ -248,8 +256,7 @@ onUnmounted(() => off?.())
 <style>
 /* Agent 版本列 + 行菜单:数据表 render 函数创建的元素不带 scoped 属性,
    样式须放非 scoped 块才能命中(类名沿用,仅本页使用) */
-.ver-cell { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; padding: 2px 0; }
-.ver-stale { color: #e3c47f; }
+.ver-cell { display: flex; flex-direction: row; gap: 6px; align-items: center; padding: 2px 0; white-space: nowrap; }
 .ver-badge.warn {
   background: rgba(157, 165, 180, 0.1);
   color: #a4abb8;
@@ -298,6 +305,8 @@ onUnmounted(() => off?.())
       <n-button type="primary" size="small" class="glow-hover" @click="openTokenModal">＋ 纳管新节点</n-button>
     </div>
 
+    <net-series-card />
+
     <n-space style="margin-bottom:14px" align="center">
       <n-select
         v-model:value="statusFilter" size="small" style="width:130px" clearable placeholder="状态"
@@ -336,8 +345,7 @@ onUnmounted(() => off?.())
         <div style="font-weight:600; margin-bottom:8px">在目标机器执行（二进制形态）：</div>
         <div class="term" style="margin-bottom:10px">{{ installCmd() }}</div>
         <div class="muted" style="font-size:12.5px; margin-bottom:8px">
-          Unraid / Docker 机用容器形态：<code>docker run -d --restart unless-stopped -e HERD_SERVER=… -e HERD_TOKEN=… herd/shepherd</code>
-          （详见 docs/01 §3.1 挂载清单）
+          Unraid 等无 systemd 环境直接执行同一条命令：install.sh 自动落二进制到 <code>/mnt/user/herd-workdir</code> 并生成 User Scripts 自启脚本（宿主机直跑，Docker 探测零配置）
         </div>
         <n-space>
           <n-button size="small" @click="copy(freshToken)">复制 Token</n-button>
@@ -382,4 +390,22 @@ onUnmounted(() => off?.())
   0%, 100% { box-shadow: 0 0 3px rgba(99, 211, 166, 0.5); }
   50% { box-shadow: 0 0 11px rgba(99, 211, 166, 0.95); }
 }
+
+/* 主机名 chip:淡底等宽,hover 亮起并带复制暗示,点击复制到剪贴板 */
+.host-chip {
+  font-family: "JetBrains Mono", Consolas, monospace;
+  background: rgba(238, 241, 245, 0.06);
+  border: 1px solid rgba(238, 241, 245, 0.1);
+  border-radius: 5px;
+  padding: 1px 6px;
+  color: var(--text-2);
+  cursor: copy;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.host-chip:hover {
+  background: rgba(238, 241, 245, 0.12);
+  color: #eef1f5;
+  border-color: rgba(238, 241, 245, 0.25);
+}
+.host-chip:hover::after { content: " ⧉"; font-size: 11px; }
 </style>

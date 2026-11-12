@@ -120,7 +120,7 @@ func dirScanCandidates(dir string, names []string) []ConfCandidate {
 	return out
 }
 
-// containerConfCandidates 容器形态的 nginx/caddy 配置发现:
+// containerConfCandidates 容器化部署应用的配置发现(Agent 在宿主机上经 docker.sock inspect 容器挂载):
 // 镜像名含 nginx/caddy 时,挂载目标命中该镜像的配置惯例路径 → 挂载源为候选。
 // Source 携带容器名供面板归组展示。
 func containerConfCandidates(image string, mounts []mountEntryRaw) []ConfCandidate {

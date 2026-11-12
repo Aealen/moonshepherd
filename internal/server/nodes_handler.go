@@ -381,3 +381,19 @@ func (s *Server) audit(r *http.Request, action, target string, detail any) {
 	}
 	s.st.AddAudit(r.Context(), sess.UserID, sess.Username, action, target, d, clientIP(r))
 }
+
+// handleNetSeries GET /metrics/net-series?minutes=60：牧群网络吞吐时序（跨节点聚合，30s 桶）。
+func (s *Server) handleNetSeries(w http.ResponseWriter, r *http.Request) {
+	minutes := 60
+	if v := r.URL.Query().Get("minutes"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 24*60 {
+			minutes = n
+		}
+	}
+	pts, err := s.st.NetSeries(r.Context(), int64(minutes)*60, 30)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "internal", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"points": pts, "bucket": 30})
+}

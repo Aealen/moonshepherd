@@ -224,10 +224,10 @@ type ExecPayload struct {
 // DockerOpPayload docker.op 白名单操作(docs/01 §3.4:枚举操作,非任意命令)。
 // Container 为容器名或 ID(探测器上报的 name/id 均可)。
 type DockerOpPayload struct {
-	Op        string `json:"op"`                  // start/stop/restart/logs/pull
+	Op        string `json:"op"`                  // start/stop/restart/logs/pull/update
 	Container string `json:"container,omitempty"` // logs/pull 外必填
 	TailLines int    `json:"tail_lines,omitempty"`
-	Image     string `json:"image,omitempty"` // pull 用:缺省取容器当前镜像
+	Image     string `json:"image,omitempty"` // pull/update 用:缺省取容器当前镜像
 }
 
 // docker.op 白名单操作集(Agent 侧硬校验,面板侧复用同一份)。
@@ -237,10 +237,11 @@ const (
 	DockerOpRestart = "restart"
 	DockerOpLogs    = "logs"
 	DockerOpPull    = "pull"
+	DockerOpUpdate  = "update" // 拉最新镜像并按原配置重建容器(restart 不换镜像,更新必须 recreate)
 )
 
 // DockerOpsAllowed 白名单(顺序即面板操作列展示序)。
-var DockerOpsAllowed = []string{DockerOpStart, DockerOpStop, DockerOpRestart, DockerOpLogs, DockerOpPull}
+var DockerOpsAllowed = []string{DockerOpStart, DockerOpStop, DockerOpRestart, DockerOpLogs, DockerOpPull, DockerOpUpdate}
 
 type ProbePayload struct {
 	ProbeNames []string `json:"probe_names"`

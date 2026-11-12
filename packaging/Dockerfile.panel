@@ -1,6 +1,9 @@
 # 牧云面板镜像：多阶段（node 构建前端 → go 构建单二进制 → 精简运行层）
+# 构建阶段固定 --platform=$BUILDPLATFORM(构建机原生平台):Go 以 TARGETARCH 交叉编译,
+# 双架构构建完全绕开 QEMU 模拟(此前 arm64 全程软件模拟编译,单次 CI 30+ 分钟);node
+# 产物为平台无关静态文件同理。runner 层不加 --platform,buildx 按目标平台拉基础镜像。
 # GOPROXY/NPM_REGISTRY 仅是构建期加速选项，默认官方源（CI 无需改动；国内构建可传国内镜像源）
-FROM node:22-slim AS web
+FROM --platform=$BUILDPLATFORM node:22-slim AS web
 ARG NPM_REGISTRY=https://registry.npmjs.org
 WORKDIR /src/web
 COPY web/package.json web/package-lock.json ./
@@ -8,8 +11,9 @@ RUN npm ci --no-audit --no-fund --registry=${NPM_REGISTRY}
 COPY web/ ./
 RUN npm run build
 
-FROM golang:1.27-alpine AS build
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS build
 ARG VERSION=dev
+ARG TARGETARCH
 ARG GOPROXY=https://proxy.golang.org,direct
 ENV GOPROXY=${GOPROXY}
 WORKDIR /src
@@ -17,15 +21,17 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 COPY --from=web /src/web/dist /src/web/dist
-# 三架构 Agent 二进制:install.sh 分发源,内嵌进镜像 /app/dist(docs/01 §4.2 通道③)
+# 面板二进制按目标架构交叉编译;三架构 Agent 分发二进制与平台无关,一次编齐(docs/01 §4.2 通道③)
 RUN LDFLAGS="-s -w -X github.com/aealen/moonshepherd/version.Version=${VERSION}" && \
+    CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build -ldflags "$LDFLAGS" -o /out/moon ./cmd/moon && \
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "$LDFLAGS" -o /out/dist/herd-linux-amd64 ./cmd/herd && \
     CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags "$LDFLAGS" -o /out/dist/herd-linux-arm64 ./cmd/herd && \
     CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 go build -ldflags "$LDFLAGS" -o /out/dist/herd-linux-armv7 ./cmd/herd && \
-    CGO_ENABLED=0 go build -ldflags "$LDFLAGS" -o /out/moon ./cmd/moon
+    printf 'root:x:0:0:root:/root:/sbin/nologin\nherd:x:1000:1000:Linux User,,,:/app:/sbin/nologin\n' > /out/passwd
 
+# runner 层零 RUN 指令(用户文件构建期生成),目标平台仅做文件复制——CI 无需 QEMU
 FROM alpine:3.20
-RUN adduser -D -H -u 1000 herd
+COPY --from=build /out/passwd /etc/passwd
 USER herd
 WORKDIR /app
 VOLUME /app/data
