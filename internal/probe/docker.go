@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"os/exec"
 	"strings"
 	"time"
@@ -20,7 +22,7 @@ type DockerProbe struct{}
 
 func (p *DockerProbe) Name() string { return "docker" }
 
-// dockerSockPaths 默认探测路径（容器形态挂载后生效）。
+// dockerSockPaths 默认探测路径（Agent 跑在宿主机上，直连本机 socket，无需挂载）。
 var dockerSockPaths = []string{"/var/run/docker.sock", "/run/docker.sock"}
 
 func (p *DockerProbe) Detect(ctx context.Context) ([]protocol.App, error) {
@@ -49,16 +51,32 @@ type sockContainer struct {
 
 // inspectDetail /containers/{id}/json 的关注子集（docs/06 应用详情）。
 type inspectDetail struct {
+	Name   string `json:"Name"`
 	Config struct {
-		Env        []string          `json:"Env"`
-		Labels     map[string]string `json:"Labels"`
-		Entrypoint []string          `json:"Entrypoint"`
-		Cmd        []string          `json:"Cmd"`
+		Env         []string          `json:"Env"`
+		Labels      map[string]string `json:"Labels"`
+		Entrypoint  []string          `json:"Entrypoint"`
+		Cmd         []string          `json:"Cmd"`
+		Hostname    string            `json:"Hostname"`
+		User        string            `json:"User"`
+		WorkingDir  string            `json:"WorkingDir"`
+		Healthcheck *healthcheckRaw   `json:"Healthcheck"`
 	} `json:"Config"`
 	HostConfig struct {
 		RestartPolicy struct {
 			Name string `json:"Name"`
 		} `json:"RestartPolicy"`
+		Privileged  bool              `json:"Privileged"`
+		Devices     []deviceRaw       `json:"Devices"`
+		CapAdd      []string          `json:"CapAdd"`
+		CapDrop     []string          `json:"CapDrop"`
+		ExtraHosts  []string          `json:"ExtraHosts"`
+		Dns         []string          `json:"Dns"`
+		Sysctls     map[string]string `json:"Sysctls"`
+		Ulimits     []ulimitRaw       `json:"Ulimits"`
+		Memory      int64             `json:"Memory"`
+		NanoCpus    int64             `json:"NanoCpus"`
+		NetworkMode string            `json:"NetworkMode"`
 	} `json:"HostConfig"`
 	NetworkSettings struct {
 		Networks map[string]struct {
@@ -66,6 +84,22 @@ type inspectDetail struct {
 		} `json:"Networks"`
 	} `json:"NetworkSettings"`
 	Mounts []mountEntryRaw `json:"Mounts"`
+}
+
+// 镜像/容器 config 的运行约束条目(重建命令参考用)。
+type healthcheckRaw struct {
+	Test     []string `json:"Test"`
+	Interval int64    `json:"Interval"`
+	Retries  int      `json:"Retries"`
+}
+type deviceRaw struct {
+	PathOnHost      string `json:"PathOnHost"`
+	PathInContainer string `json:"PathInContainer"`
+}
+type ulimitRaw struct {
+	Name string `json:"Name"`
+	Soft int64  `json:"Soft"`
+	Hard int64  `json:"Hard"`
 }
 
 // mountEntryRaw Engine API 挂载条目(与 mountEntry 字段同名)。
@@ -161,6 +195,7 @@ func detectViaSock(ctx context.Context, sock string) ([]protocol.App, error) {
 		}
 		if c.ID != "" {
 			detail["id"] = c.ID
+			detail["name"] = name
 			// inspect 补全：挂载 / 网络 / 环境变量（失败降级，保持 list 级详情）
 			if insp := inspectContainer(ctx, client, c.ID); insp != nil {
 				// 启动命令与重启策略(容器进程定义,如实展示不拼 docker run 串)
@@ -193,6 +228,56 @@ func detectViaSock(ctx context.Context, sock string) ([]protocol.App, error) {
 				}
 				if len(insp.Config.Env) > 0 {
 					detail["env"] = insp.Config.Env
+					// 镜像 ENV 差集:容器 env 减镜像自带 env = 运行时真正注入的部分(重建命令参考)
+					if ue := diffUserEnv(ctx, client, c.Image, insp.Config.Env); len(ue) > 0 {
+						detail["user_env"] = ue
+					}
+				}
+				// 运行约束(重建参考):仅记录非默认值
+				if h := insp.Config.Hostname; h != "" && h != name {
+					detail["hostname"] = h
+				}
+				if u := insp.Config.User; u != "" {
+					detail["user"] = u
+				}
+				if w := insp.Config.WorkingDir; w != "" && w != "/" {
+					detail["workdir"] = w
+				}
+				if insp.Config.Healthcheck != nil && len(insp.Config.Healthcheck.Test) > 0 {
+					detail["healthcheck"] = insp.Config.Healthcheck
+				}
+				if insp.HostConfig.Privileged {
+					detail["privileged"] = true
+				}
+				if len(insp.HostConfig.Devices) > 0 {
+					detail["devices"] = insp.HostConfig.Devices
+				}
+				if len(insp.HostConfig.CapAdd) > 0 {
+					detail["cap_add"] = insp.HostConfig.CapAdd
+				}
+				if len(insp.HostConfig.CapDrop) > 0 {
+					detail["cap_drop"] = insp.HostConfig.CapDrop
+				}
+				if len(insp.HostConfig.ExtraHosts) > 0 {
+					detail["extra_hosts"] = insp.HostConfig.ExtraHosts
+				}
+				if len(insp.HostConfig.Dns) > 0 {
+					detail["dns"] = insp.HostConfig.Dns
+				}
+				if len(insp.HostConfig.Sysctls) > 0 {
+					detail["sysctls"] = insp.HostConfig.Sysctls
+				}
+				if len(insp.HostConfig.Ulimits) > 0 {
+					detail["ulimits"] = insp.HostConfig.Ulimits
+				}
+				if insp.HostConfig.Memory > 0 {
+					detail["memory"] = insp.HostConfig.Memory
+				}
+				if insp.HostConfig.NanoCpus > 0 {
+					detail["nano_cpus"] = insp.HostConfig.NanoCpus
+				}
+				if nm := insp.HostConfig.NetworkMode; nm != "" && nm != "bridge" && nm != "default" {
+					detail["network_mode"] = nm
 				}
 			}
 		}
@@ -228,6 +313,53 @@ func inspectContainer(ctx context.Context, client *http.Client, id string) *insp
 // composeKey com.docker.compose.project → compose_project。
 func composeKey(label string) string {
 	return strings.ReplaceAll(strings.TrimPrefix(label, "com.docker.compose."), ".", "_")
+}
+
+// diffUserEnv 容器 env 减镜像自带 env,得到运行时注入的部分(重建命令参考)。
+// 镜像 inspect 失败时返回 nil(降级:前端回退用全量 env)。
+func diffUserEnv(ctx context.Context, client *http.Client, image string, containerEnv []string) []string {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://docker/images/"+url.PathEscape(image)+"/json", nil)
+	if err != nil {
+		return nil
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		return nil
+	}
+	var im struct {
+		Config struct {
+			Env []string `json:"Env"`
+		} `json:"Config"`
+	}
+	if json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&im) != nil {
+		return nil
+	}
+	return diffEnvList(containerEnv, im.Config.Env)
+}
+
+// diffEnvList 纯差集:container 有而镜像没有的变量(KEY 相同即视为继承)。
+func diffEnvList(containerEnv, imageEnv []string) []string {
+	base := make(map[string]struct{}, len(imageEnv))
+	for _, e := range imageEnv {
+		if k, _, ok := strings.Cut(e, "="); ok {
+			base[k] = struct{}{}
+		}
+	}
+	ue := make([]string, 0, 8)
+	for _, e := range containerEnv {
+		k, _, ok := strings.Cut(e, "=")
+		if !ok {
+			continue
+		}
+		if _, inherited := base[k]; !inherited {
+			ue = append(ue, e)
+		}
+	}
+	return ue
 }
 
 func containerState(state string) string {
