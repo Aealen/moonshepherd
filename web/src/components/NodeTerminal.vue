@@ -278,7 +278,7 @@ onBeforeUnmount(() => {
           @click="showConfirm = true">打开终端</n-button>
         <n-popconfirm v-else @positive-click="closeSession">
           <template #trigger>
-            <n-button size="tiny" type="warning" secondary>断开</n-button>
+            <n-button size="tiny" type="warning" quaternary>断开</n-button>
           </template>
           关闭将终止节点上的 shell 会话,确定?
         </n-popconfirm>
@@ -359,21 +359,21 @@ onBeforeUnmount(() => {
 }
 .term-actions { margin-left: auto; display: flex; gap: 6px; flex: none; }
 
-/* 速插命令条 */
-.term-snippets { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.term-snippets-label { font-size: 11.5px; color: #676e7a; margin-right: 2px; }
+/* 速插命令:纯文字态降噪,hover 才浮出底色 */
+.term-snippets { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.term-snippets-label { font-size: 11.5px; color: #676e7a; margin-right: 4px; }
 .term-snippet {
   font-size: 11.5px;
   font-family: "JetBrains Mono", Consolas, monospace;
   color: var(--text-2, #a4abb8);
-  background: rgba(238, 241, 245, 0.05);
-  border: 1px solid rgba(238, 241, 245, 0.1);
-  border-radius: 99px;
-  padding: 3px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 3px 8px;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
-.term-snippet:hover { background: rgba(238, 241, 245, 0.12); color: #eef1f5; border-color: rgba(238, 241, 245, 0.24); }
+.term-snippet:hover { background: rgba(238, 241, 245, 0.1); color: #eef1f5; }
 
 /* 终端舞台 */
 .term-stage { position: relative; min-height: 380px; flex: 1; }

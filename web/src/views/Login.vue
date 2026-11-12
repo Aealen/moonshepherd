@@ -6,6 +6,7 @@ import { NForm, NFormItem, NInput, NButton } from 'naive-ui'
 
 const router = useRouter()
 const route = useRoute()
+const year = new Date().getFullYear()
 
 
 const username = ref('admin')
@@ -91,7 +92,7 @@ async function login() {
     </div>
 
     <div class="login-footer">
-      <span class="mono">MoonShepherd</span> · 把散落在云端的服务器，当羊群来放牧
+      <span class="mono">© {{ year }} MoonShepherd</span>
     </div>
   </div>
 </template>
