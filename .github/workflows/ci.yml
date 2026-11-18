@@ -110,3 +110,55 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+  # 打 tag 出二进制 Release:面板(linux amd64/arm64,含 systemd unit)与
+  # Agent(amd64/arm64/armv7)产物挂 GitHub Release。仓库私有阶段仅协作者
+  # 可下载,转 public 开源后历史产物自动公开(docs/01 §4.2 分发通道②)。
+  release:
+    name: 打包发布（二进制 → Release）
+    needs: test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      # make cross 依赖 frontend 目标(node 构建产出 web/dist,go:embed 源);
+      # 版本号经 git describe 自动取 tag 名(LDFLAGS 注入 version 包)
+      - name: 交叉编译全平台产物
+        run: make cross
+
+      - name: 打包面板与 Agent
+        run: |
+          mkdir -p release
+          for arch in amd64 arm64; do
+            pkg=moonshepherd-panel-linux-$arch
+            mkdir -p "$pkg"
+            cp dist/moon-linux-$arch "$pkg/moon"
+            cp packaging/moonshepherd.service "$pkg/moonshepherd.service"
+            tar -czf "release/$pkg.tar.gz" -C "$pkg" .
+          done
+          for arch in amd64 arm64 armv7; do
+            pkg=herd-agent-linux-$arch
+            mkdir -p "$pkg"
+            cp dist/herd-linux-$arch "$pkg/herd"
+            tar -czf "release/$pkg.tar.gz" -C "$pkg" .
+          done
+          cd release && sha256sum *.tar.gz > checksums.txt
+
+      - name: 上传 Release 资产
+        uses: softprops/action-ghrelease@v2
+        with:
+          files: release/*
