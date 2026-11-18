@@ -52,6 +52,8 @@ const apps = [
 ]
 
 // 指令:状态全谱
+// 面板版本(模拟自更新后翻转)
+let mockPanelVersion = 'main-d70fa47'
 const cmdTypes = ['exec', 'docker.op', 'probe', 'config.apply']
 const commands = Array.from({ length: 14 }, (_, i) => {
   const n = nodes[i % 2]
@@ -197,7 +199,15 @@ export function mockPlugin() {
         if (mCmdRetry && req.method === 'POST') return send(json({ command_id: 'c_mock' + randomUUID().slice(0, 8) }))
 
         if (url === '/api/v1/audit-logs') return send(page(auditLogs, Number(q.get('page') ?? 1), Number(q.get('page_size') ?? 20)))
-        if (url === '/api/v1/system/info') return send(json({ panel_version: 'main-d70fa47', go_version: 'go1.27', os: 'windows', arch: 'amd64', data_dir: './data-dev', node_count: nodes.length, online_count: 2, app_count: apps.length, uptime_s: now() - start }))
+        if (url === '/api/v1/system/info') return send(json({ panel_version: mockPanelVersion, go_version: 'go1.27', os: 'windows', arch: 'amd64', data_dir: './data-dev', node_count: nodes.length, online_count: 2, app_count: apps.length, uptime_s: now() - start }))
+        // 面板更新检查/执行(mock:execute 后 3s 翻转版本,模拟重启完成)
+        if (url === '/api/v1/system/update-check') {
+          return send(json({ current: mockPanelVersion, available: mockPanelVersion !== 'v0.1.1', latest: { version: 'v0.1.1', notes: 'v0.1.1\n\n- 指令中心批量下发:一键对多节点执行,批次视图聚合进度\n- 容器「更新镜像」:拉取最新镜像并按原配置重建\n- Web 终端重做:会话计时/全屏/速插命令条\n- Agent 形态收敛:systemd 服务与裸二进制\n- CI 双架构构建免 QEMU 模拟', url: 'https://github.com/Aealen/moonshepherd/releases/tag/v0.1.1', published_at: now() - 3600 }, mode: 'manual', arch: 'amd64' }))
+        }
+        if (url === '/api/v1/system/update-execute' && req.method === 'POST') {
+          setTimeout(() => { mockPanelVersion = 'v0.1.1' }, 3000)
+          return send(json({ updated: true }))
+        }
         // MCP Keys 管理(docs/07;内存仿真)
         const mcpKeysMock = [
           { id: 1, name: 'claude-desktop', scopes: ['read', 'logs', 'container-ops'], node_scope: '{"mode":"custom","nodes":[{"id":"n_light"},{"id":"n_aliyun","apps":["MoonShepherd"]}]}', enabled: true, last_used: now() - 120, created_at: now() - 86400 * 3 },

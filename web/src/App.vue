@@ -11,6 +11,7 @@ import { ServerOutline, GridOutline, TerminalOutline, ShieldCheckmarkOutline, Se
 import { NIcon } from 'naive-ui'
 import { onEvent, connectEvents } from './api/ws'
 import logoUrl from './assets/logo-64.png'
+import UpdateNotice from './components/UpdateNotice.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -178,6 +179,7 @@ if (!isLogin.value) {
                   <span class="stat-dot"></span>{{ offline }} 离线
                 </div>
               </div>
+              <update-notice />
               <n-dropdown :options="userMenu" @select="logout">
                 <n-button quaternary size="small" style="gap:9px; padding:0 10px;">
                   <n-avatar round :size="26" style="background:linear-gradient(135deg,#f4f6f9,#a7aebc); color:#0a0b0d; font-weight:700">M</n-avatar>
