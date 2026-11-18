@@ -13,13 +13,12 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"syscall"
-
-	"github.com/aealen/moonshepherd/version"
 )
 
 func init() { panelSelfReplace = panelSelfReplaceLinux }
