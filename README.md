@@ -147,6 +147,7 @@ Header:  Authorization: Bearer mcp_xxx…（面板「MCP Keys」创建，仅显�
 | [06-面板API与页面设计](docs/06-面板API与页面设计.md) | REST API 端点、浏览器实时事件通道、前端页面结构与交互规范 |
 | [07-MCP服务设计](docs/07-MCP服务设计.md) | MCP Server 架构、工具清单、两级授权模型 |
 | [07a-MCP实现规范](docs/07a-MCP实现规范.md) | MCP 工具实现细节与校验规则 |
+| [08-服务端二进制部署与数据迁移](docs/08-服务端二进制部署与数据迁移.md) | 面板裸机/systemd 部署规范、全参数表、跨机数据迁移与 Agent 切换指向 |
 
 ## 🛠️ 本地开发
 
