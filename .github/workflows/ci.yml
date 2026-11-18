@@ -145,9 +145,11 @@ jobs:
           mkdir -p release
           for arch in amd64 arm64; do
             pkg=moonshepherd-panel-linux-$arch
-            mkdir -p "$pkg"
+            mkdir -p "$pkg/distro-bin"
             cp dist/moon-linux-$arch "$pkg/moon"
             cp packaging/moonshepherd.service "$pkg/moonshepherd.service"
+            # distro-bin:agent.update 与 install.sh 的分发源(docs/08 目录规范),随包附带免二次构建
+            cp dist/herd-linux-amd64 dist/herd-linux-arm64 dist/herd-linux-armv7 "$pkg/distro-bin/"
             tar -czf "release/$pkg.tar.gz" -C "$pkg" .
           done
           for arch in amd64 arm64 armv7; do
