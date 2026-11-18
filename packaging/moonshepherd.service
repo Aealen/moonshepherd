@@ -1,0 +1,33 @@
+# MoonShepherd 面板 systemd 服务单元
+# 安装：
+#   1. 目录规范见 docs/08-服务端二进制部署与数据迁移.md（本文档与其配套）
+#   2. cp packaging/moonshepherd.service /etc/systemd/system/
+#   3. systemctl daemon-reload && systemctl enable --now moonshepherd
+[Unit]
+Description=MoonShepherd Panel (single binary + SQLite)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# 专用系统用户(推荐):useradd -r -s /sbin/nologin moonshepherd && chown -R moonshepherd /opt/moonshepherd
+# 若以 root 直跑可注释下行
+User=moonshepherd
+Group=moonshepherd
+WorkingDirectory=/opt/moonshepherd
+# 数据目录/监听地址按需调整;完整参数表见 docs/08
+ExecStart=/opt/moonshepherd/moon server \
+    --data /opt/moonshepherd/data \
+    --addr :8080
+Restart=always
+RestartSec=5
+# 兜底:10s 内未退出按失败强杀后重启(与 Agent install.sh unit 同风格)
+TimeoutStopSec=10
+
+# 环境变量等价项(与命令行 flag 二选一):
+#   HERD_TRUST_PROXY=1   前置反代时必须(信任 X-Forwarded-Proto,docs/05 §3.1)
+#   HERD_DIST_DIR=/opt/moonshepherd/distro-bin   Agent 二进制分发目录(install.sh 下载源)
+#Environment=HERD_TRUST_PROXY=1
+
+[Install]
+WantedBy=multi-user.target

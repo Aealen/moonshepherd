@@ -161,6 +161,8 @@ func (s *Server) buildRouter() http.Handler {
 			auth.Post("/nodes/{id}/configs", s.handleCreateConfig)
 
 			auth.Get("/commands", s.handleListCommands)
+			auth.Post("/commands/batch", s.handleCreateCommandBatch)
+			auth.Get("/commands/batch/{id}/stats", s.handleBatchStats)
 			auth.Get("/commands/{id}", s.handleGetCommand)
 			auth.Post("/commands/{id}/retry", s.handleRetryCommand)
 

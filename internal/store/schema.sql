@@ -60,6 +60,7 @@ CREATE INDEX IF NOT EXISTS idx_app_type ON app_inventory (app_type);
 CREATE TABLE IF NOT EXISTS commands (
     id          TEXT PRIMARY KEY,             -- c_ 前缀 UUID
     node_id     TEXT NOT NULL,
+    parent_id   TEXT NOT NULL DEFAULT '',     -- 批量下发组 ID(同批次子指令共享;单发为空串)
     type        TEXT NOT NULL,
     payload     TEXT NOT NULL,
     status      TEXT NOT NULL DEFAULT 'pending', -- pending/sent/running/success/failed/expired/lost
@@ -76,6 +77,7 @@ CREATE TABLE IF NOT EXISTS commands (
     finished_at INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_cmd_node ON commands (node_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_cmd_parent ON commands (parent_id) WHERE parent_id != '';
 CREATE INDEX IF NOT EXISTS idx_cmd_status ON commands (status);
 
 -- 配置目标：node × app_type × target_path（docs/06 §2.5）

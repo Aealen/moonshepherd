@@ -37,6 +37,12 @@ func Open(dataDir string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("执行 schema 迁移: %w", err)
 	}
+	// 增量迁移:CREATE TABLE IF NOT EXISTS 不改已存在的表,老库补列(ALTER 重复执行报 duplicate column,忽略)
+	for _, stmt := range []string{
+		`ALTER TABLE commands ADD COLUMN parent_id TEXT NOT NULL DEFAULT ''`,
+	} {
+		_, _ = db.Exec(stmt)
+	}
 	return &Store{DB: db}, nil
 }
 

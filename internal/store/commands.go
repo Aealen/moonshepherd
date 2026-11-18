@@ -12,6 +12,7 @@ import (
 type Command struct {
 	ID         string          `json:"command_id"`
 	NodeID     string          `json:"node_id"`
+	ParentID   string          `json:"parent_id,omitempty"` // 批量下发组 ID(同批次共享;单发为空)
 	Type       string          `json:"type"`
 	Payload    json.RawMessage `json:"payload"`
 	Status     string          `json:"status"`
@@ -30,9 +31,10 @@ type Command struct {
 
 // CommandFilter 指令历史过滤。
 type CommandFilter struct {
-	NodeID string
-	Type   string
-	Status string
+	NodeID   string
+	ParentID string
+	Type     string
+	Status   string
 }
 
 // CreateCommand 新建指令（status=pending）。
@@ -46,19 +48,19 @@ func (s *Store) CreateCommand(ctx context.Context, c *Command) error {
 		stages = string(c.Stages)
 	}
 	_, err := s.DB.ExecContext(ctx,
-		`INSERT INTO commands (id, node_id, type, payload, status, timeout_s, stages, created_by, created_at)
-		 VALUES (?,?,?,?, 'pending', ?, ?, ?, ?)`,
-		c.ID, c.NodeID, c.Type, string(c.Payload), c.TimeoutS, stages, c.CreatedBy, c.CreatedAt)
+		`INSERT INTO commands (id, node_id, parent_id, type, payload, status, timeout_s, stages, created_by, created_at)
+		 VALUES (?,?,?,?,?, 'pending', ?, ?, ?, ?)`,
+		c.ID, c.NodeID, c.ParentID, c.Type, string(c.Payload), c.TimeoutS, stages, c.CreatedBy, c.CreatedAt)
 	return err
 }
 
-const cmdCols = "SELECT id, node_id, type, payload, status, stdout, stderr, truncated, exit_code, stages, error, timeout_s, created_by, created_at, sent_at, finished_at FROM commands"
+const cmdCols = "SELECT id, node_id, parent_id, type, payload, status, stdout, stderr, truncated, exit_code, stages, error, timeout_s, created_by, created_at, sent_at, finished_at FROM commands"
 
 func scanCommand(scan func(...any) error) (*Command, error) {
 	var c Command
 	var exit sql.NullInt64
-	var errStr, stages, payload sql.NullString
-	if err := scan(&c.ID, &c.NodeID, &c.Type, &payload, &c.Status, &c.Stdout, &c.Stderr, &c.Truncated, &exit, &stages, &errStr, &c.TimeoutS, &c.CreatedBy, &c.CreatedAt, &c.SentAt, &c.FinishedAt); err != nil {
+	var errStr, stages, payload, parent sql.NullString
+	if err := scan(&c.ID, &c.NodeID, &parent, &c.Type, &payload, &c.Status, &c.Stdout, &c.Stderr, &c.Truncated, &exit, &stages, &errStr, &c.TimeoutS, &c.CreatedBy, &c.CreatedAt, &c.SentAt, &c.FinishedAt); err != nil {
 		return nil, err
 	}
 	if exit.Valid {
@@ -69,6 +71,9 @@ func scanCommand(scan func(...any) error) (*Command, error) {
 	c.Stages = json.RawMessage(stages.String)
 	if errStr.Valid {
 		c.Error = errStr.String
+	}
+	if parent.Valid {
+		c.ParentID = parent.String
 	}
 	return &c, nil
 }
@@ -90,6 +95,10 @@ func (s *Store) ListCommands(ctx context.Context, f CommandFilter, page, pageSiz
 		where = append(where, "node_id = ?")
 		args = append(args, f.NodeID)
 	}
+	if f.ParentID != "" {
+		where = append(where, "parent_id = ?")
+		args = append(args, f.ParentID)
+	}
 	if f.Type != "" {
 		where = append(where, "type = ?")
 		args = append(args, f.Type)
@@ -105,7 +114,7 @@ func (s *Store) ListCommands(ctx context.Context, f CommandFilter, page, pageSiz
 	}
 	args = append(args, pageSize, (page-1)*pageSize)
 	rows, err := s.DB.QueryContext(ctx,
-		"SELECT id, node_id, type, payload, status, '', '', truncated, exit_code, stages, error, timeout_s, created_by, created_at, sent_at, finished_at FROM commands WHERE "+w+" ORDER BY created_at DESC LIMIT ? OFFSET ?", args...)
+		"SELECT id, node_id, parent_id, type, payload, status, '', '', truncated, exit_code, stages, error, timeout_s, created_by, created_at, sent_at, finished_at FROM commands WHERE "+w+" ORDER BY created_at DESC LIMIT ? OFFSET ?", args...)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -191,4 +200,24 @@ func (s *Store) ExpireStaleCommands(ctx context.Context, ttlS int) {
 // NewCommandID c_ 前缀指令 ID。
 func NewCommandID() string {
 	return "c_" + randHex(16)
+}
+
+// BatchCommandStats 批量组内各状态计数(聚合条展示)。
+func (s *Store) BatchCommandStats(ctx context.Context, parentID string) (map[string]int, error) {
+	rows, err := s.DB.QueryContext(ctx,
+		"SELECT status, COUNT(*) FROM commands WHERE parent_id = ? GROUP BY status", parentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[string]int{}
+	for rows.Next() {
+		var st string
+		var n int
+		if err := rows.Scan(&st, &n); err != nil {
+			return nil, err
+		}
+		out[st] = n
+	}
+	return out, rows.Err()
 }
