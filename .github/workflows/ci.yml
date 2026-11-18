@@ -49,7 +49,9 @@ jobs:
 
   docker:
     needs: test
-    if: github.event_name == 'push'
+    # 仅打 tag 构建推送镜像(镜像=版本发布物,latest 即最新 release);
+    # 常规 PR/main push 只跑 test,Dockerfile 构建正确性随 tag 首跑验证(可重打)
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -66,7 +68,7 @@ jobs:
       # 二进制版本与镜像 tag 解耦:metadata-action 的 outputs.version 会被
       # 高优先级的 raw latest 标签污染成 "latest",导致面板与 Agent 二进制
       # 自报版本恒为 latest、新旧无法区分(升级判定是字符串相等比较,恒等
-      # 即永远"已是最新")。此处显式计算:tag 事件 → v0.1.0;branch push → main-<sha7>
+      # 即永远"已是最新")。此处显式计算:tag 事件 → ref_name 即 tag 名(如 v0.1.1)
       - name: 计算二进制版本
         id: binver
         run: |
@@ -88,12 +90,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.name }}
-          # sha 标签前缀:push 分支用 <branch>-;push tag 事件无 branch,{{branch}} 渲染为空
-          # 会生成非法标签 "image:-94e8f0d"(v0.1.0 曾因此失败),tag 事件改用 v 前缀
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,prefix={{branch}}-,enable=${{ github.ref_type == 'branch' }}
-            type=sha,prefix=v-,enable=${{ github.ref_type == 'tag' }}
+            type=raw,value=latest
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
 
