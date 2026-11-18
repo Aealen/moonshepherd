@@ -61,7 +61,7 @@ func (s *Server) handleUpdateAgent(w http.ResponseWriter, r *http.Request) {
 		Version:     version.Version,
 		DownloadURL: downloadURL,
 		SHA256:      hex.EncodeToString(sum[:]),
-	}, 600)
+	}, 600, "")
 	if err != nil {
 		writeCmdErr(w, err)
 		return

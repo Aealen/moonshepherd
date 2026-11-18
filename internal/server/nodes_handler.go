@@ -139,7 +139,7 @@ func (s *Server) handleProbeNode(w http.ResponseWriter, r *http.Request) {
 	}
 	_ = json.NewDecoder(r.Body).Decode(&req)
 	cmd, err := s.createCommandFor(r, chi.URLParam(r, "id"), protocol.CmdProbe,
-		protocol.ProbePayload{ProbeNames: req.ProbeNames}, 120)
+		protocol.ProbePayload{ProbeNames: req.ProbeNames}, 120, "")
 	if err != nil {
 		writeCmdErr(w, err)
 		return
@@ -201,6 +201,44 @@ func (s *Server) handleRevokeToken(w http.ResponseWriter, r *http.Request) {
 
 // ---------- 指令 ----------
 
+// validateCommandReq 单发/批量共用的指令校验(type 白名单 + payload 结构)。
+func validateCommandReq(cmdType string, raw json.RawMessage, timeoutS int) error {
+	switch cmdType {
+	case protocol.CmdExec, protocol.CmdProbe, protocol.CmdConfigApply, protocol.CmdDockerOp:
+	default:
+		return errBadRequest("不支持的指令类型")
+	}
+	if timeoutS > 600 {
+		return errBadRequest("超时上限 600s（docs/04 §5.3）")
+	}
+	switch cmdType {
+	case protocol.CmdExec:
+		var p protocol.ExecPayload
+		if json.Unmarshal(raw, &p) != nil || p.Cmd == "" {
+			return errBadRequest("exec 指令需要 payload.cmd")
+		}
+	case protocol.CmdDockerOp:
+		var p protocol.DockerOpPayload
+		if err := json.Unmarshal(raw, &p); err != nil {
+			return errBadRequest("docker.op payload 非法")
+		}
+		allowed := false
+		for _, op := range protocol.DockerOpsAllowed {
+			if p.Op == op {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			return errBadRequest("op 必须是 " + strings.Join(protocol.DockerOpsAllowed, "/"))
+		}
+		if p.Container == "" && !(p.Op == protocol.DockerOpPull && p.Image != "") {
+			return errBadRequest("缺少 container")
+		}
+	}
+	return nil
+}
+
 // handleCreateCommand POST /nodes/{id}/commands（docs/06 §2.4）。
 func (s *Server) handleCreateCommand(w http.ResponseWriter, r *http.Request) {
 	var req struct {
@@ -212,47 +250,11 @@ func (s *Server) handleCreateCommand(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "validation_failed", "请求体非法")
 		return
 	}
-	switch req.Type {
-	case protocol.CmdExec, protocol.CmdProbe, protocol.CmdConfigApply, protocol.CmdDockerOp:
-	default:
-		writeErr(w, http.StatusBadRequest, "validation_failed", "不支持的指令类型")
+	if err := validateCommandReq(req.Type, req.Payload, req.TimeoutS); err != nil {
+		writeCmdErr(w, err)
 		return
 	}
-	if req.TimeoutS > 600 {
-		writeErr(w, http.StatusBadRequest, "validation_failed", "超时上限 600s（docs/04 §5.3）")
-		return
-	}
-	if req.Type == protocol.CmdExec {
-		var p protocol.ExecPayload
-		if json.Unmarshal(req.Payload, &p) != nil || p.Cmd == "" {
-			writeErr(w, http.StatusBadRequest, "validation_failed", "exec 指令需要 payload.cmd")
-			return
-		}
-	}
-	if req.Type == protocol.CmdDockerOp {
-		var p protocol.DockerOpPayload
-		if err := json.Unmarshal(req.Payload, &p); err != nil {
-			writeErr(w, http.StatusBadRequest, "validation_failed", "docker.op payload 非法")
-			return
-		}
-		allowed := false
-		for _, op := range protocol.DockerOpsAllowed {
-			if p.Op == op {
-				allowed = true
-				break
-			}
-		}
-		if !allowed {
-			writeErr(w, http.StatusBadRequest, "validation_failed",
-				"op 必须是 "+strings.Join(protocol.DockerOpsAllowed, "/"))
-			return
-		}
-		if p.Container == "" && !(p.Op == protocol.DockerOpPull && p.Image != "") {
-			writeErr(w, http.StatusBadRequest, "validation_failed", "缺少 container")
-			return
-		}
-	}
-	cmd, err := s.createCommandFor(r, chi.URLParam(r, "id"), req.Type, json.RawMessage(req.Payload), req.TimeoutS)
+	cmd, err := s.createCommandFor(r, chi.URLParam(r, "id"), req.Type, json.RawMessage(req.Payload), req.TimeoutS, "")
 	if err != nil {
 		writeCmdErr(w, err)
 		return
@@ -261,8 +263,60 @@ func (s *Server) handleCreateCommand(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"command_id": cmd.ID, "status": cmd.Status})
 }
 
+// handleCreateCommandBatch POST /commands/batch：同一命令批量下发多节点。
+// 拆为 N 条独立指令(共享 parent_id)走既有链路——每节点独立审计/超时/结果；
+// exec 对离线节点拒投递,计入 skipped,不阻塞其余节点。
+func (s *Server) handleCreateCommandBatch(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		NodeIDs  []string        `json:"node_ids"`
+		Type     string          `json:"type"`
+		Payload  json.RawMessage `json:"payload"`
+		TimeoutS int             `json:"timeout_s"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeErr(w, http.StatusBadRequest, "validation_failed", "请求体非法")
+		return
+	}
+	if len(req.NodeIDs) == 0 || len(req.NodeIDs) > 50 {
+		writeErr(w, http.StatusBadRequest, "validation_failed", "node_ids 需 1~50 个")
+		return
+	}
+	if err := validateCommandReq(req.Type, req.Payload, req.TimeoutS); err != nil {
+		writeCmdErr(w, err)
+		return
+	}
+	// 去重保持顺序
+	seen := map[string]bool{}
+	ids := req.NodeIDs[:0]
+	for _, id := range req.NodeIDs {
+		if !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
+		}
+	}
+
+	batchID := store.NewCommandID()
+	created := make([]map[string]any, 0, len(ids))
+	skipped := make([]map[string]any, 0)
+	for _, nodeID := range ids {
+		cmd, err := s.createCommandFor(r, nodeID, req.Type, json.RawMessage(req.Payload), req.TimeoutS, batchID)
+		if err != nil {
+			skipped = append(skipped, map[string]any{"node_id": nodeID, "reason": err.Error()})
+			continue
+		}
+		s.audit(r, "command.create", cmd.ID, map[string]string{"type": req.Type, "batch": batchID})
+		created = append(created, map[string]any{"command_id": cmd.ID, "node_id": nodeID, "status": cmd.Status})
+	}
+	s.audit(r, "command.batch", batchID, map[string]any{
+		"type": req.Type, "requested": len(ids), "created": len(created), "skipped": len(skipped)})
+	writeJSON(w, http.StatusOK, map[string]any{
+		"batch_id": batchID, "created": created, "skipped": skipped,
+	})
+}
+
 // createCommandFor 建指令 + 在线即投递（节点 offline 时 exec 拒绝，docs/06 §2.4）。
-func (s *Server) createCommandFor(r *http.Request, nodeID, cmdType string, payload any, timeoutS int) (*store.Command, error) {
+// parentID 非空表示批量组子指令(共享批次 ID,单发传空串)。
+func (s *Server) createCommandFor(r *http.Request, nodeID, cmdType string, payload any, timeoutS int, parentID string) (*store.Command, error) {
 	ctx := r.Context()
 	node, err := s.st.GetNode(ctx, nodeID)
 	if err != nil {
@@ -276,7 +330,7 @@ func (s *Server) createCommandFor(r *http.Request, nodeID, cmdType string, paylo
 		return nil, errConflict("节点离线，交互式命令拒绝创建（probe/config.apply 可排队）")
 	}
 	raw, _ := json.Marshal(payload)
-	cmd := &store.Command{ID: store.NewCommandID(), NodeID: nodeID, Type: cmdType,
+	cmd := &store.Command{ID: store.NewCommandID(), NodeID: nodeID, ParentID: parentID, Type: cmdType,
 		Payload: raw, TimeoutS: timeoutS, CreatedBy: sessionFrom(r).Username}
 	if err := s.st.CreateCommand(ctx, cmd); err != nil {
 		return nil, errInternal(err)
@@ -293,13 +347,23 @@ func (s *Server) handleListCommands(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	page, pageSize := pageParams(r)
 	cmds, total, err := s.st.ListCommands(r.Context(), store.CommandFilter{
-		NodeID: q.Get("node_id"), Type: q.Get("type"), Status: q.Get("status"),
+		NodeID: q.Get("node_id"), ParentID: q.Get("parent"), Type: q.Get("type"), Status: q.Get("status"),
 	}, page, pageSize)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "internal", err.Error())
 		return
 	}
 	writePage(w, page, pageSize, total, cmds)
+}
+
+// handleBatchStats GET /commands/batch/{id}/stats：批量组各状态计数(前端聚合条)。
+func (s *Server) handleBatchStats(w http.ResponseWriter, r *http.Request) {
+	stats, err := s.st.BatchCommandStats(r.Context(), chi.URLParam(r, "id"))
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "internal", err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, stats)
 }
 
 // handleGetCommand GET /commands/{id}：详情含输出正文与 stages。
@@ -323,7 +387,7 @@ func (s *Server) handleRetryCommand(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusConflict, "conflict", "仅 lost/failed 指令可重发")
 		return
 	}
-	cmd := &store.Command{ID: store.NewCommandID(), NodeID: old.NodeID, Type: old.Type,
+	cmd := &store.Command{ID: store.NewCommandID(), NodeID: old.NodeID, ParentID: old.ParentID, Type: old.Type,
 		Payload: old.Payload, TimeoutS: old.TimeoutS, CreatedBy: sessionFrom(r).Username}
 	if err := s.st.CreateCommand(r.Context(), cmd); err != nil {
 		writeErr(w, http.StatusInternalServerError, "internal", err.Error())

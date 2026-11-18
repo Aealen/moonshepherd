@@ -93,6 +93,7 @@ export interface AppRow {
 export interface Command {
   command_id: string
   node_id: string
+  parent_id?: string
   type: string
   payload: any
   status: string

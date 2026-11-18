@@ -147,7 +147,7 @@ func (m mcpDeps) FileOp(ctx context.Context, nodeID, op, path, content, dest str
 // 已是 mcp:xxx,这里用哑 Request 携带(调用方 ctx 透传超时)。
 func (m mcpDeps) runCommand(ctx context.Context, nodeID, cmdType string, payload any, timeoutS int) (string, error) {
 	req := httptest.NewRequest("POST", "/mcp-internal", nil).WithContext(ctx)
-	cmd, err := m.s.createCommandFor(req, nodeID, cmdType, payload, timeoutS+5)
+	cmd, err := m.s.createCommandFor(req, nodeID, cmdType, payload, timeoutS+5, "")
 	if err != nil {
 		return "", err
 	}

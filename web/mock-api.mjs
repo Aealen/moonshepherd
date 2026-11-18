@@ -148,7 +148,50 @@ export function mockPlugin() {
 
         if (url === '/api/v1/commands') {
           const fNode = q.get('node_id')
-          return send(page(fNode ? commands.filter((c) => c.node_id === fNode) : commands, Number(q.get('page') ?? 1), Number(q.get('page_size') ?? 20)))
+          const fParent = q.get('parent')
+          let list = commands
+          if (fParent) list = list.filter((c) => c.parent_id === fParent)
+          else if (fNode) list = list.filter((c) => c.node_id === fNode)
+          return send(page(list, Number(q.get('page') ?? 1), Number(q.get('page_size') ?? 20)))
+        }
+        // 批量下发:在线节点造 running 子指令(8s 后模拟执行完成),离线跳过
+        if (url === '/api/v1/commands/batch' && req.method === 'POST') {
+          let raw = ''
+          req.on('data', (c) => { raw += c })
+          req.on('end', () => {
+            let nodeIds = []
+            try { nodeIds = JSON.parse(raw).node_ids ?? [] } catch { /* 空体 */ }
+            const batchID = 'c_b' + randomUUID().replaceAll('-', '').slice(0, 12)
+            const created = []
+            const skipped = []
+            for (const id of nodeIds) {
+              const n = nodes.find((x) => x.id === id)
+              if (!n || n.status !== 'online') {
+                skipped.push({ node_id: id, reason: n ? '节点离线，交互式命令拒绝创建（probe/config.apply 可排队）' : '节点不存在' })
+                continue
+              }
+              const cmd = {
+                command_id: 'c_b' + randomUUID().replaceAll('-', '').slice(0, 10),
+                node_id: id, parent_id: batchID, type: 'exec', status: 'running',
+                payload: JSON.parse(raw).payload ?? {}, timeout_s: 120,
+                created_by: 'admin', created_at: now(),
+              }
+              commands.unshift(cmd)
+              created.push({ command_id: cmd.command_id, node_id: id, status: cmd.status })
+            }
+            setTimeout(() => {
+              for (const c of commands) if (c.parent_id === batchID) { c.status = 'success'; c.exit_code = 0 }
+            }, 8000)
+            return send(json({ batch_id: batchID, created, skipped }))
+          })
+          return
+        }
+        // 批量组状态统计
+        const mBatchStats = url.match(/^\/api\/v1\/commands\/batch\/(c_\w+)\/stats$/)
+        if (mBatchStats && req.method === 'GET') {
+          const stats = {}
+          for (const c of commands) if (c.parent_id === mBatchStats[1]) stats[c.status] = (stats[c.status] ?? 0) + 1
+          return send(json(stats))
         }
         const mCmdRetry = url.match(/^\/api\/v1\/commands\/(c_\w+)\/retry$/)
         if (mCmdRetry && req.method === 'POST') return send(json({ command_id: 'c_mock' + randomUUID().slice(0, 8) }))

@@ -146,7 +146,7 @@ func (s *Server) applyOrRollback(w http.ResponseWriter, r *http.Request, rollbac
 	}
 	cmd, err := s.createCommandFor(r, tgt.NodeID, protocol.CmdConfigApply, protocol.ConfigApplyPayload{
 		AppType: tgt.AppType, TargetPath: tgt.TargetPath, Content: v.Content, VersionID: v.ID,
-	}, 300)
+	}, 300, "")
 	if err != nil {
 		writeCmdErr(w, err)
 		return
