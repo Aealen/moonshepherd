@@ -247,10 +247,17 @@ onMounted(() => {
   load()
   loadPanelVersion()
   off = onEvent((ev) => {
-    if (ev.topic === 'node.status' || ev.topic === 'node.registered') load()
+    if (ev.topic === 'node.status' || ev.topic === 'node.registered') reloadSoon()
   })
 })
 onUnmounted(() => off?.())
+
+// 事件驱动刷新防抖:批量/心跳场景状态事件可能高频到达,300ms 合并为一次刷新
+let reloadTimer: number | null = null
+function reloadSoon() {
+  if (reloadTimer) return
+  reloadTimer = window.setTimeout(() => { reloadTimer = null; load() }, 300)
+}
 </script>
 
 <style>

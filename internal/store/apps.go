@@ -147,8 +147,20 @@ func (s *Store) LatestMetric(ctx context.Context, nodeID string) (*MetricIn, int
 }
 
 // PurgeOldMetrics 保留策略：默认 7 天（docs/01 §7）。
+// 分批小事务删除：单连接 SQLite 下一次性大 DELETE 会长时间占住连接,
+// 期间所有 API 查询排队(实测表现为页面偶发卡顿数秒)。
 func (s *Store) PurgeOldMetrics(ctx context.Context, retention time.Duration) {
-	_, _ = s.DB.ExecContext(ctx, "DELETE FROM metrics WHERE ts <= ?", now()-int64(retention.Seconds()))
+	cutoff := now() - int64(retention.Seconds())
+	for {
+		res, err := s.DB.ExecContext(ctx,
+			"DELETE FROM metrics WHERE rowid IN (SELECT rowid FROM metrics WHERE ts <= ? LIMIT 5000)", cutoff)
+		if err != nil {
+			return // 保留策略失败不致命,下轮重试
+		}
+		if n, _ := res.RowsAffected(); n < 5000 {
+			return // 批次未满=已删完
+		}
+	}
 }
 
 // NetPoint 牧群级网络吞吐时序点（跨节点聚合）。
