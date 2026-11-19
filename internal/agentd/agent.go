@@ -245,7 +245,16 @@ func (a *Agent) runOnce(ctx context.Context, creds *credentials) (int, error) {
 		conn.Close()
 		return 0, err
 	}
-	conn.SetReadDeadline(time.Time{})
+	// 常驻读保活:面板 gateway 每 20s 发 WS ping,收到即刷新读 deadline(60s,
+	// 三倍余量);读循环每条消息亦刷新。若无此保护,TCP 半开(面板重启/网络抖动
+	// 致连接死亡)时读循环永远阻塞在 ReadJSON——进程活着、连接死着、节点被判
+	// 离线且 Agent 无从自愈(线上 Light-Tower 实锤挂死场景)。
+	const readKeepalive = 60 * time.Second
+	conn.SetReadDeadline(time.Now().Add(readKeepalive))
+	conn.SetPingHandler(func(appData string) error {
+		_ = conn.SetReadDeadline(time.Now().Add(readKeepalive))
+		return conn.WriteControl(websocket.PongMessage, []byte(appData), time.Now().Add(5*time.Second))
+	})
 	if ack.Type == protocol.TypeError {
 		conn.Close()
 		return protocol.CloseAuthFailed, fmt.Errorf("hello 被拒")
@@ -298,6 +307,8 @@ func (a *Agent) runOnce(ctx context.Context, creds *credentials) (int, error) {
 				}
 				return
 			}
+			// 面板下行业务消息也是活动字节,刷新读保活 deadline
+			_ = conn.SetReadDeadline(time.Now().Add(readKeepalive))
 			a.handleEnvelope(ctx, env)
 		}
 	}()
