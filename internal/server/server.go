@@ -131,6 +131,7 @@ func (s *Server) buildRouter() http.Handler {
 			auth.Put("/auth/password", s.handleChangePassword)
 			auth.Get("/system/update-check", s.handleUpdateCheck)
 			auth.Post("/system/update-execute", s.handleUpdateExecute)
+			auth.Get("/system/update-progress", s.handleUpdateProgress)
 
 			auth.Get("/nodes", s.handleListNodes)
 			auth.Get("/metrics/net-series", s.handleNetSeries)

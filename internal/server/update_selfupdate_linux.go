@@ -6,24 +6,27 @@
 package server
 
 import (
-	"archive/tar"
-	"compress/gzip"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
-	"io"
-	"net/http"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"syscall"
+	"time"
 )
 
 func init() { panelSelfReplace = panelSelfReplaceLinux }
 
-func panelSelfReplaceLinux(ctx context.Context, rel *ghRelease) error {
+// panelSelfReplaceLinux 全程经 setUpdateProgress 上报阶段(前端轮询展示);
+// 失败统一打点 error 进度与日志——此前失败被前端误当「重启中」静默吞掉。
+func panelSelfReplaceLinux(ctx context.Context, rel *ghRelease) (err error) {
+	defer func() {
+		if err != nil {
+			setUpdateProgress("error", err.Error(), 0, 0, "")
+			slog.Warn("面板自更新失败", "target", rel.Version, "err", err)
+		}
+	}()
 	if runtime.GOARCH != "amd64" && runtime.GOARCH != "arm64" {
 		return fmt.Errorf("不支持架构: %s(Release 提供 amd64/arm64)", runtime.GOARCH)
 	}
@@ -57,18 +60,23 @@ func panelSelfReplaceLinux(ctx context.Context, rel *ghRelease) error {
 		return fmt.Errorf("checksums.txt 中缺少 %s", filepath.Base(tarAsset.Name))
 	}
 
-	// ③ 下载面板 tar.gz(约 15MB,落临时文件)
+	// ③ 下载面板 tar.gz(约 14MB;ctx 给足 15 分钟,国内直连慢时可走代理)
 	tarPath := filepath.Join(workDir, ".upgrade.tar.gz")
-	if err := downloadToFile(ctx, tarAsset, tarPath); err != nil {
+	tctx, tcancel := context.WithTimeout(ctx, 15*time.Minute)
+	err = downloadToFile(tctx, tarAsset, tarPath)
+	tcancel()
+	if err != nil {
 		return fmt.Errorf("下载面板包失败: %w", err)
 	}
 	defer os.Remove(tarPath)
+	setUpdateProgress("verify", "校验 sha256", 0, 0, "")
 	got := sha256SumFile(tarPath)
 	if got != want {
 		return fmt.Errorf("sha256 校验失败:期望 %s… 实得 %s…", want[:12], got[:12])
 	}
 
 	// ④ 解压到旁路目录(同文件系统保证 rename 原子)
+	setUpdateProgress("unpack", "解压面板包", 0, 0, "")
 	tmp := filepath.Join(workDir, ".upgrade-tmp")
 	_ = os.RemoveAll(tmp)
 	if err := untar(tarPath, tmp); err != nil {
@@ -83,6 +91,7 @@ func panelSelfReplaceLinux(ctx context.Context, rel *ghRelease) error {
 	}
 
 	// ⑤ 原子替换 moon(旧版备份 .bak,失败即回滚)
+	setUpdateProgress("replace", "替换面板文件", 0, 0, "")
 	bak := self + ".bak"
 	_ = os.Remove(bak)
 	if err := os.Rename(self, bak); err != nil {
@@ -116,125 +125,14 @@ func panelSelfReplaceLinux(ctx context.Context, rel *ghRelease) error {
 	_ = os.RemoveAll(tmp)
 
 	// ⑦ 原地换身:同一 PID 直接以新版本二进制运行,无需外部拉起者;
-	// SQLite(WAL)与连接的 fd 随 exec 关闭,前端以重连+版本变化确认更新完成
-	return syscall.Exec(self, os.Args, os.Environ())
-}
-
-// findAsset 按名称找 Release 资产。
-func findAsset(rel *ghRelease, name string) (ghAsset, error) {
-	for _, a := range rel.Assets {
-		if a.Name == name {
-			return a, nil
-		}
+	// SQLite(WAL)与连接的 fd 随 exec 关闭,前端以重连+版本变化确认更新完成。
+	// argv 必须补回 "server":main() 的子命令分派会把 os.Args 重写为去掉子命令的
+	// 形式([moon, --data ...]),原样传给新进程会被再次当子命令解析而启动失败
+	// (报「未知子命令 --data」)。
+	argv := os.Args
+	if len(argv) < 2 || argv[1] != "server" {
+		argv = append([]string{argv[0], "server"}, argv[1:]...)
 	}
-	return ghAsset{}, fmt.Errorf("Release %s 缺少资产 %s", rel.Version, name)
-}
-
-// downloadTo 下载资产到内存(小文件:校验和)。
-func downloadTo(ctx context.Context, a ghAsset, limit int64) ([]byte, error) {
-	resp, err := ghRequest(ctx, assetAPIURL(a), true)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GitHub API %d", resp.StatusCode)
-	}
-	return io.ReadAll(io.LimitReader(resp.Body, limit))
-}
-
-// downloadToFile 下载资产到文件(大文件:面板包)。
-func downloadToFile(ctx context.Context, a ghAsset, dest string) error {
-	resp, err := ghRequest(ctx, assetAPIURL(a), true)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("GitHub API %d", resp.StatusCode)
-	}
-	f, err := os.Create(dest)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	_, err = io.Copy(f, io.LimitReader(resp.Body, 256<<20))
-	return err
-}
-
-// assetAPIURL 资产下载走 API 地址(Accept: octet-stream;私有仓库鉴权统一)。
-func assetAPIURL(a ghAsset) string {
-	return "https://api.github.com/repos/" + ghRepo + "/releases/assets/" + fmt.Sprint(a.ID)
-}
-
-// parseChecksum 从 checksums.txt 提取指定文件名的 sha256。
-func parseChecksum(content, filename string) string {
-	for _, line := range strings.Split(content, "\n") {
-		fields := strings.Fields(line)
-		if len(fields) == 2 && strings.HasSuffix(fields[1], filename) {
-			return fields[0]
-		}
-	}
-	return ""
-}
-
-func sha256SumFile(path string) string {
-	f, err := os.Open(path)
-	if err != nil {
-		return ""
-	}
-	defer f.Close()
-	h := sha256.New()
-	if _, err := io.Copy(h, f); err != nil {
-		return ""
-	}
-	return hex.EncodeToString(h.Sum(nil))
-}
-
-// untar 解压 tar.gz 到目标目录(防御性:拒绝绝对路径与 ../ 穿越)。
-func untar(tarPath, dest string) error {
-	f, err := os.Open(tarPath)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	gz, err := gzip.NewReader(f)
-	if err != nil {
-		return err
-	}
-	defer gz.Close()
-	tr := tar.NewReader(gz)
-	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		name := filepath.Clean(hdr.Name)
-		if strings.HasPrefix(name, "/") || strings.HasPrefix(name, ".."+string(filepath.Separator)) || name == ".." {
-			return fmt.Errorf("包内非法路径: %s", hdr.Name)
-		}
-		target := filepath.Join(dest, name)
-		switch hdr.Typeflag {
-		case tar.TypeDir:
-			if err := os.MkdirAll(target, 0o755); err != nil {
-				return err
-			}
-		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-				return err
-			}
-			out, err := os.OpenFile(target, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, os.FileMode(hdr.Mode)&0o777)
-			if err != nil {
-				return err
-			}
-			if _, err := io.Copy(out, tr); err != nil {
-				out.Close()
-				return err
-			}
-			out.Close()
-		}
-	}
+	setUpdateProgress("exec", "面板原地重启", 0, 0, "")
+	return syscall.Exec(self, argv, os.Environ())
 }
