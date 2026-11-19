@@ -116,11 +116,39 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	ch := s.hub.subscribe()
 	defer s.hub.unsubscribe(ch)
 
-	// 读循环:探活/关闭检测 + 终端上行消息(input/resize 会话归属校验后转发)
+	// 保活:20s 服务端 WS ping(gateway 对 Agent 连接同款)——反代将 ping 帧视为
+	// 活动字节,防空闲超时掐断长连(浏览器 events 通道此前无保活,公网反代
+	// proxy_read_timeout 60s 必掐,终端输入/输出随之断流);读侧 60s deadline
+	// 由 PongHandler 刷新,死连接及时清理。
+	_ = conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	conn.SetPongHandler(func(string) error {
+		return conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	})
+	keepaliveDone := make(chan struct{})
+	go func() {
+		ticker := time.NewTicker(20 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				if err := conn.WriteControl(websocket.PingMessage, nil, time.Now().Add(5*time.Second)); err != nil {
+					return // 写失败即连接死,读循环与写循环自行退出
+				}
+			case <-keepaliveDone:
+				return
+			}
+		}
+	}()
+
+	// 读循环:探活/关闭检测 + 终端上行消息(input/resize 会话归属校验后转发;
+	// 未知类型忽略——客户端 25s 应用层心跳 ping 也走这里维持字节流)
 	sess := sessionFrom(r)
 	done := make(chan struct{})
 	go func() {
-		defer close(done)
+		defer func() {
+			close(done)
+			close(keepaliveDone)
+		}()
 		conn.SetReadLimit(protocol.MaxPayloadBytes + 4096)
 		for {
 			_, data, err := conn.ReadMessage()
@@ -131,6 +159,8 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 			if json.Unmarshal(data, &msg) != nil {
 				continue
 			}
+			// 客户端心跳/终端消息都视为活动字节,刷新读 deadline
+			_ = conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 			switch msg.Type {
 			case "session.input":
 				s.terms.ForwardInput(context.Background(), s.hub, s.st,

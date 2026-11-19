@@ -177,11 +177,18 @@ async function retry(c: Command) {
   } catch (e: any) { message.error(e.message) }
 }
 
+// 事件驱动刷新防抖:批量场景下状态事件高频到达,300ms 合并为一次刷新
+let reloadTimer: number | null = null
+function reloadSoon() {
+  if (reloadTimer) return
+  reloadTimer = window.setTimeout(() => { reloadTimer = null; load() }, 300)
+}
+
 let off: (() => void) | null = null
 onMounted(() => {
   loadNodes()
   load()
-  off = onEvent((ev) => { if (ev.topic === 'command.status') load() })
+  off = onEvent((ev) => { if (ev.topic === 'command.status') reloadSoon() })
 })
 onUnmounted(() => off?.())
 </script>

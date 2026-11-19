@@ -29,17 +29,17 @@ type Options struct {
 
 // Server 牧云面板。
 type Server struct {
-	opt       Options
-	st        *store.Store
-	box       *credenc.Box
-	hub       *agentHub
-	sessions  *sessionStore    // 登录会话(Cookie)
-	terms     *panelSessions   // 终端会话(Web 终端,docs/04 §8)
-	logstream *panelLogStreams // 容器日志流(docs/04 §9)
-	fileBridge *fileBridgeT    // MCP 文件同步等待桥
-	mcpSrv *mcp.Server        // MCP 服务(docs/07)
-	limiter   *loginLimiter
-	router    http.Handler
+	opt        Options
+	st         *store.Store
+	box        *credenc.Box
+	hub        *agentHub
+	sessions   *sessionStore    // 登录会话(Cookie)
+	terms      *panelSessions   // 终端会话(Web 终端,docs/04 §8)
+	logstream  *panelLogStreams // 容器日志流(docs/04 §9)
+	fileBridge *fileBridgeT     // MCP 文件同步等待桥
+	mcpSrv     *mcp.Server      // MCP 服务(docs/07)
+	limiter    *loginLimiter
+	router     http.Handler
 }
 
 // New 组装面板。
@@ -51,15 +51,15 @@ func New(opt Options, st *store.Store, box *credenc.Box) (*Server, error) {
 		opt.DistDir = "distro-bin"
 	}
 	s := &Server{
-		opt:       opt,
-		st:        st,
-		box:       box,
-		hub:       newHub(),
-		sessions:  newSessionStore(),
-		terms:     newPanelSessions(),
-		logstream: newPanelLogStreams(),
+		opt:        opt,
+		st:         st,
+		box:        box,
+		hub:        newHub(),
+		sessions:   newSessionStore(),
+		terms:      newPanelSessions(),
+		logstream:  newPanelLogStreams(),
 		fileBridge: newFileBridge(),
-		limiter:   newLoginLimiter(),
+		limiter:    newLoginLimiter(),
 	}
 	s.router = s.buildRouter()
 	return s, nil

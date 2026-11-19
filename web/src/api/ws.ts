@@ -9,6 +9,7 @@ type Handler = (ev: HubEvent) => void
 
 let ws: WebSocket | null = null
 let reconnectTimer: number | null = null
+let pingTimer: number | null = null
 const handlers = new Set<Handler>()
 
 // 订阅过滤条件（页面进入时设置；单实例面板，全局一份订阅足够）
@@ -47,6 +48,12 @@ function open() {
   ws.onopen = () => {
     if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null }
     ws!.send(JSON.stringify({ sub: subFilter }))
+    // 心跳保活:反代对无字节流动的 WS 有空闲超时(如 nginx proxy_read_timeout 60s),
+    // 静默连接会被掐断导致终端输入/输出断流——25s 应用层 ping 维持字节流
+    if (pingTimer) { clearInterval(pingTimer) }
+    pingTimer = window.setInterval(() => {
+      try { ws?.send(JSON.stringify({ type: 'ping' })) } catch { /* 断线由 onclose 处理 */ }
+    }, 25000)
   }
   ws.onmessage = (msg) => {
     try {
@@ -55,6 +62,7 @@ function open() {
     } catch { /* 忽略坏帧 */ }
   }
   ws.onclose = () => {
+    if (pingTimer) { clearInterval(pingTimer); pingTimer = null }
     ws = null
     // 断线重连：10s 退避；页面以 REST 兜底，不追求秒级（docs/06 §3）
     if (!reconnectTimer) {
