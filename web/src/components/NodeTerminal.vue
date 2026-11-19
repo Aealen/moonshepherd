@@ -102,9 +102,35 @@ function sendInput(data: string) {
   sendClient({ type: 'session.input', session_id: sessionID.value, data_b64: b64encode(data) })
 }
 
+// 早到帧缓冲:POST 建会话期间(sessionID 尚未知)收到的本节点会话帧先入队,
+// 响应到达后按新 session_id 精确回放。Agent fork PTY 后立即写 shell prompt,
+// 而 POST 响应还要等审计落库 + 公网 RTT,帧常先到;此前因 session_id 不匹配被丢,
+// 表现为"已建立会话但迟迟等不到 shell 输出"。帧自带 session_id,回放时过滤即可,
+// 天然排除同节点其他标签页会话的输出。
+let buffering = false
+const pendingFrames: { topic: string; payload?: any }[] = []
+const PENDING_MAX = 256 // 仅 POST 窗口内短暂缓冲;超限丢最旧,保留最新屏内容
+
+// applySessionEvent 处理属于当前会话的帧(实时与回放共用);返回是否已消费。
+function applySessionEvent(ev: { topic: string; payload?: any }): boolean {
+  if (ev.payload?.session_id !== sessionID.value) return false
+  if (ev.topic === 'session.output') {
+    term?.write(b64decode(ev.payload.data_b64))
+    return true
+  }
+  if (ev.topic === 'session.close') {
+    markClosed(ev.payload?.reason || '已关闭')
+    sessionID.value = null
+    return true
+  }
+  return false
+}
+
 async function openSession() {
   if (!term || !container.value) return
   opening.value = true
+  buffering = true
+  pendingFrames.length = 0
   try {
     fit!.fit()
     const rows = term.rows || 24
@@ -116,11 +142,22 @@ async function openSession() {
     elapsed.value = 0
     if (tickTimer) clearInterval(tickTimer)
     tickTimer = setInterval(() => { elapsed.value++ }, 1000)
-    // 本地回显:会话建立瞬间给反馈,避免 shell 欢迎语到达前"像没连上"
-    term.write('\r\n\x1b[90m── 会话已建立,等待 shell 输出… ──\x1b[0m\r\n')
+    // 回放早到帧:prompt 已在队列里则直接渲染,不再写"等待 shell 输出"占位提示
+    buffering = false
+    const early = pendingFrames.splice(0)
+    let consumed = false
+    for (const ev of early) {
+      if (applySessionEvent(ev)) consumed = true
+    }
+    if (!consumed) {
+      // 本地回显:会话建立瞬间给反馈,避免 shell 欢迎语到达前"像没连上"
+      term.write('\r\n\x1b[90m── 会话已建立,等待 shell 输出… ──\x1b[0m\r\n')
+    }
     term.focus()
     term.scrollToBottom()
   } catch (e: any) {
+    buffering = false
+    pendingFrames.length = 0
     message.error(e.message)
   } finally {
     opening.value = false
@@ -227,12 +264,17 @@ onMounted(async () => {
   } catch { /* 水印署名缺省 admin */ }
   off = onEvent((ev) => {
     if (ev.node_id !== props.nodeID) return
-    if (ev.topic === 'session.output' && ev.payload?.session_id === sessionID.value) {
-      term?.write(b64decode(ev.payload.data_b64))
-    } else if (ev.topic === 'session.close' && ev.payload?.session_id === sessionID.value) {
-      markClosed(ev.payload?.reason || '已关闭')
-      sessionID.value = null
-    } else if (ev.topic === 'node.status' && ev.payload?.status === 'offline') {
+    if (ev.topic === 'session.output' || ev.topic === 'session.close') {
+      if (buffering) {
+        // POST 未返回:不知道哪个会话是我的,先入队,openSession 成功后按 id 回放
+        if (pendingFrames.length >= PENDING_MAX) pendingFrames.shift()
+        pendingFrames.push(ev)
+        return
+      }
+      applySessionEvent(ev)
+      return
+    }
+    if (ev.topic === 'node.status' && ev.payload?.status === 'offline') {
       if (sessionID.value) {
         markClosed('节点离线')
         sessionID.value = null
