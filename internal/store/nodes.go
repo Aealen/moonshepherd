@@ -303,7 +303,7 @@ func (s *Store) BindTokenToNode(ctx context.Context, token, nodeID string) {
 
 // ListRegistrationTokens Token 列表（不含明文）。
 func (s *Store) ListRegistrationTokens(ctx context.Context) ([]RegistrationToken, error) {
-	rows, err := s.DB.QueryContext(ctx, "SELECT id, token_hash, note, status, node_id, expires_at, created_at FROM registration_tokens ORDER BY created_at DESC")
+	rows, err := s.DB.QueryContext(ctx, "SELECT id, token_hash, note, status, COALESCE(node_id, ''), expires_at, created_at FROM registration_tokens ORDER BY created_at DESC")
 	if err != nil {
 		return nil, err
 	}
