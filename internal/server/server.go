@@ -61,6 +61,9 @@ func New(opt Options, st *store.Store, box *credenc.Box) (*Server, error) {
 		fileBridge: newFileBridge(),
 		limiter:    newLoginLimiter(),
 	}
+	// MCP 服务注入面板能力(PanelDeps 桥接见 mcp_bridge.go)。
+	// 缺此赋值时 mcpSrv 为 nil,POST /mcp 触发 nil pointer panic(表现为 Empty reply)。
+	s.mcpSrv = mcp.NewServer(mcpDeps{s})
 	s.router = s.buildRouter()
 	return s, nil
 }
@@ -132,6 +135,7 @@ func (s *Server) buildRouter() http.Handler {
 			auth.Get("/system/update-check", s.handleUpdateCheck)
 			auth.Post("/system/update-execute", s.handleUpdateExecute)
 			auth.Get("/system/update-progress", s.handleUpdateProgress)
+			auth.Get("/nodes/{id}/sessions", s.handleListTerminalSessions)
 
 			auth.Get("/nodes", s.handleListNodes)
 			auth.Get("/metrics/net-series", s.handleNetSeries)
