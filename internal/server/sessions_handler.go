@@ -49,9 +49,18 @@ func (s *Server) handleOpenTerminal(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"session_id": term.ID})
 }
 
-// handleCloseTerminal DELETE /nodes/{id}/sessions/{sid}(仅会话所有者)。
-func (s *Server) handleCloseTerminal(w http.ResponseWriter, r *http.Request) {
+// handleListTerminalSessions GET /nodes/{id}/sessions:当前用户在该节点的活跃
+// 终端会话 id 列表。前端在 events WS 重连成功后调它校验保活会话存活
+// (面板重启会清空内存会话表,浏览器侧组件不知情,输入会静默丢弃)。
+func (s *Server) handleListTerminalSessions(w http.ResponseWriter, r *http.Request) {
 	sess := sessionFrom(r)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"data": s.terms.ListByUserAndNode(chi.URLParam(r, "id"), sess.UserID),
+	})
+}
+
+// handleCloseTerminal DELETE /nodes/{id}/sessions/{sid}(仅会话所有者)。
+func (s *Server) handleCloseTerminal(w http.ResponseWriter, r *http.Request) {	sess := sessionFrom(r)
 	sid := chi.URLParam(r, "sid")
 	if !s.terms.Close(r.Context(), s.hub, s.st, sid, sess.UserID, sess.Username, clientIP(r)) {
 		writeErr(w, http.StatusNotFound, "not_found", "会话不存在或非本人开启")
