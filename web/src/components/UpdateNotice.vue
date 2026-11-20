@@ -5,6 +5,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { NButton, NModal, NSpin, useMessage } from 'naive-ui'
 import { api } from '../api'
+import BorderGlow from './BorderGlow.vue'
 
 const message = useMessage()
 
@@ -145,10 +146,11 @@ onMounted(() => check(false))
 
 <template>
   <div>
-    <n-button v-if="info?.available" size="small" type="warning" secondary class="update-chip"
-      @click="openPanel">
-      新版本 {{ info.latest?.version }}
-    </n-button>
+    <!-- 新版本胶囊:边框光晕随指针方向点亮(纯 CSS,无库依赖) -->
+    <BorderGlow v-if="info?.available" :hue="45" :sat="55" :light="72" :height="28" :glow-radius="16"
+      :edge-sensitivity="14" class="update-chip" @click="openPanel">
+      <span class="update-chip-label">新版本 {{ info.latest?.version }}</span>
+    </BorderGlow>
 
   <n-modal v-model:show="show" preset="card" title="面板更新" style="width:560px">
     <div v-if="checking" style="display:flex; align-items:center; gap:10px; padding:12px 0">
@@ -241,6 +243,12 @@ onMounted(() => check(false))
 <style scoped>
 .update-chip {
   font-variant-numeric: tabular-nums;
+}
+.update-chip-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #e3c47f;
+  letter-spacing: 0.2px;
 }
 
 /* 更新进度:夜空单色系,绿色填充=进行中 */

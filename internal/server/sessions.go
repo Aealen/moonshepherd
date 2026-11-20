@@ -41,6 +41,21 @@ func newPanelSessions() *panelSessions {
 	return &panelSessions{sessions: map[string]*panelSession{}, pending: map[string]chan *protocol.SessionOpenAckPayload{}}
 }
 
+// ListByUserAndNode 列出指定用户在指定节点的活跃会话 id。
+// 用途:面板重启会清空内存会话表,而浏览器侧终端组件保活存活——前端在
+// events WS 重连成功后调本接口校验会话存活,失联的自动标记失效。
+func (ps *panelSessions) ListByUserAndNode(nodeID string, uid int64) []string {
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+	var out []string
+	for sid, s := range ps.sessions {
+		if s.NodeID == nodeID && s.UserID == uid {
+			out = append(out, sid)
+		}
+	}
+	return out
+}
+
 // Open 打开会话:下发 session.open 并同步等待 ack(≤5s)。
 // 审计:session.open(谁在哪个节点开了终端)。
 func (ps *panelSessions) Open(ctx context.Context, h *agentHub, st auditStore,

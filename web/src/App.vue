@@ -72,7 +72,8 @@ function renderIcon(icon: any) {
   return () => h(NIcon, { size: 18 }, { default: () => h(icon) })
 }
 
-const menuOptions = computed<MenuOption[]>(() => [
+// 主菜单:高频操作置顶;管理类(审计/MCP/系统)沉到侧边栏底部
+const mainMenuOptions = computed<MenuOption[]>(() => [
   {
     label: () => h(RouterLink, { to: '/nodes' }, { default: () => '节点' }),
     key: 'nodes', icon: renderIcon(ServerOutline),
@@ -85,6 +86,9 @@ const menuOptions = computed<MenuOption[]>(() => [
     label: () => h(RouterLink, { to: '/commands' }, { default: () => '指令中心' }),
     key: 'commands', icon: renderIcon(TerminalOutline),
   },
+])
+
+const adminMenuOptions = computed<MenuOption[]>(() => [
   {
     label: () => h(RouterLink, { to: '/audit' }, { default: () => '操作审计' }),
     key: 'audit', icon: renderIcon(ShieldCheckmarkOutline),
@@ -163,7 +167,13 @@ if (!isLogin.value) {
                 </div>
               </transition>
             </div>
-            <n-menu :collapsed="collapsed" :collapsed-width="64" :options="menuOptions" :value="activeMenu" />
+            <n-menu :collapsed="collapsed" :collapsed-width="64" :options="mainMenuOptions" :value="activeMenu" />
+
+            <!-- 管理类菜单沉底:与 herding 脚注贴底对齐 -->
+            <div class="sider-admin">
+              <n-menu :collapsed="collapsed" :collapsed-width="64" :options="adminMenuOptions" :value="activeMenu" />
+            </div>
+
             <div v-if="!collapsed" class="sider-foot mono">
               <span class="foot-dot"></span> herding
             </div>
@@ -189,7 +199,13 @@ if (!isLogin.value) {
             </n-layout-header>
             <n-layout-content style="height:calc(100vh - 52px); overflow:auto; position:relative">
               <div class="starfield" aria-hidden="true"></div>
-              <router-view :key="route.fullPath" style="position:relative; z-index:1" />
+              <router-view v-slot="{ Component }">
+                <!-- 节点详情页保活:Web 终端会话绑定组件实例(切走即卸载=主动关闭会话),
+                     缓存后切页再回终端原样恢复,事件订阅持续在线、离开期间输出不丢 -->
+                <keep-alive :include="['NodeDetail']" :max="4">
+                  <component :is="Component" :key="route.fullPath" style="position:relative; z-index:1" />
+                </keep-alive>
+              </router-view>
             </n-layout-content>
           </n-layout>
         </n-layout>
@@ -225,6 +241,14 @@ if (!isLogin.value) {
 .foot-dot {
   width: 6px; height: 6px; border-radius: 50%;
   background: #63d3a6; opacity: 0.55;
+}
+
+/* 管理类菜单沉底区块:操作审计/MCP Keys/系统,贴着 herding 脚注 */
+.sider-admin {
+  position: absolute;
+  bottom: 40px; left: 0; right: 0;
+  padding: 6px 0 4px;
+  border-top: 1px solid rgba(238, 241, 245, 0.07);
 }
 .fade-enter-active, .fade-leave-active { transition: opacity 0.15s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }

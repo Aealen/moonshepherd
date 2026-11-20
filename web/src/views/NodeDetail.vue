@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, h, onMounted, onUnmounted, ref } from 'vue'
+import { computed, h, onActivated, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   NCard, NTabs, NTabPane, NTag, NSpace, NButton, NDataTable, NDescriptions, NDescriptionsItem,
@@ -7,6 +7,7 @@ import {
 } from 'naive-ui'
 import { api, fmtAgo, fmtTime, type AppRow, type Command, type ConfigTarget, type Metric, type Node } from '../api'
 import { onEvent } from '../api/ws'
+import { useTerminalStore } from '../stores/terminals'
 import AppDetailDrawer from '../components/AppDetailDrawer.vue'
 import CommandDetailDrawer from '../components/CommandDetailDrawer.vue'
 import DockerOps from '../components/DockerOps.vue'
@@ -17,6 +18,15 @@ const route = useRoute()
 const router = useRouter()
 const message = useMessage()
 const nodeId = route.params.id as string
+const termStore = useTerminalStore()
+
+// KeepAlive include 按组件名匹配(App.vue):名字必须显式声明,终端会话随实例保活
+defineOptions({ name: 'NodeDetail' })
+
+// 侧边栏「活跃会话」跳转意图:命中则直落终端 tab(挂载与保活激活两个入口都要消费)
+function consumePendingTab() {
+  if (termStore.takePendingTab(nodeId)) tab.value = 'terminal'
+}
 
 const node = ref<Node | null>(null)
 const metric = ref<Metric | null>(null)
@@ -59,6 +69,7 @@ async function probeNow() {
 // 实时：心跳快照直达概览卡片
 let off: (() => void) | null = null
 onMounted(() => {
+  consumePendingTab()
   loadNode(); loadApps(); loadCommands(); loadConfigs()
   off = onEvent((ev) => {
     if (ev.node_id !== nodeId) return
@@ -80,6 +91,14 @@ onMounted(() => {
   })
 })
 onUnmounted(() => off?.())
+
+// KeepAlive 激活回来:拉一次节点状态(在线/离线可能已变化);心跳/应用/指令
+// 靠事件订阅增量刷新——保活期间订阅一直在线,数据本就是新的。
+// 侧边栏会话跳转意图也在此消费(实例已缓存,仅切 tab 不重建)
+onActivated(() => {
+  consumePendingTab()
+  loadNode()
+})
 
 const memPct = computed(() =>
   metric.value && metric.value.mem_total ? Math.round((metric.value.mem_used / metric.value.mem_total) * 100) : null)
@@ -349,8 +368,9 @@ function adoptCandidate(c: ConfCandidate) {
         <div class="muted" style="margin-top:10px; font-size:12px">最近 20 条；点击「详情」查看输出与阶段结果，全部历史见「指令中心」</div>
       </n-tab-pane>
 
-      <!-- 终端(Web 终端,docs/04 §8) -->
-      <n-tab-pane name="terminal" tab="终端">
+      <!-- 终端(Web 终端,docs/04 §8);display-directive=show:切走仅隐藏不卸载,
+      会话与 KeepAlive 同策略跨 tab 存活 -->
+      <n-tab-pane name="terminal" tab="终端" display-directive="show">
         <NodeTerminal v-if="node" :nodeID="nodeId" :nodeName="node.name" :online="node.status === 'online'"
           :hasPty="node.capabilities?.includes('pty') ?? false" />
       </n-tab-pane>
