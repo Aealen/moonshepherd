@@ -330,8 +330,15 @@ func (s *Server) createCommandFor(r *http.Request, nodeID, cmdType string, paylo
 		return nil, errConflict("节点离线，交互式命令拒绝创建（probe/config.apply 可排队）")
 	}
 	raw, _ := json.Marshal(payload)
+	// 当前身份:MCP 侧经哑请求调用(无登录会话),sessionFrom 返回 nil——
+	// 直接解引用会 panic 并断开连接(对外表现为 502)。回退 "mcp",
+	// 精确到 Key 的审计在 mcp 层(mcp:<keyName>)。
+	createdBy := "mcp"
+	if sess := sessionFrom(r); sess != nil {
+		createdBy = sess.Username
+	}
 	cmd := &store.Command{ID: store.NewCommandID(), NodeID: nodeID, ParentID: parentID, Type: cmdType,
-		Payload: raw, TimeoutS: timeoutS, CreatedBy: sessionFrom(r).Username}
+		Payload: raw, TimeoutS: timeoutS, CreatedBy: createdBy}
 	if err := s.st.CreateCommand(ctx, cmd); err != nil {
 		return nil, errInternal(err)
 	}
